@@ -2,6 +2,10 @@
 
 A photography portfolio site with a hidden admin panel for managing all content. Built with Node.js / Express. Photos and videos are stored on Cloudinary so they persist across deploys.
 
+For changes visit Railway and navigate to "lucrolla" 
+
+Any changes to GitHub automatically deployed via Railway.
+Media/images uploaded to Cloudinary.
 ---
 
 ## Local Setup
