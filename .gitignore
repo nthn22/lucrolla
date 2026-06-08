@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Secrets — NEVER commit this
+.env
+
+# Uploaded files (stored on Cloudinary in production; local copies are disposable)
+public/photos/*
+!public/photos/.gitkeep
+public/media/*
+!public/media/.gitkeep

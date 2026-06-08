@@ -1,0 +1,31 @@
+{
+  "name": "Lucrolla",
+  "tagline": "test 123",
+  "instagram": "lucrolla",
+  "heroImages": [
+    "photos/1780870203493-hc06er3boaavjfo.jpg",
+    "photos/1780871115565-a7934b0f2ea1175507d1a012473190ee.jpg",
+    "photos/1780871118237-hfz5zxhacaao8nc.png",
+    "photos/1780872201028-hc06er3boaavjfo.jpg",
+    "photos/1780872586257-jiralab_documentation2.png",
+    {
+      "src": "https://res.cloudinary.com/dcl3dlr7r/image/upload/v1780877721/portfolio/photos/mpnhdl7a3042a916chdf.jpg",
+      "cloudId": "portfolio/photos/mpnhdl7a3042a916chdf"
+    }
+  ],
+  "heroImage": "https://res.cloudinary.com/dcl3dlr7r/image/upload/v1780877721/portfolio/photos/mpnhdl7a3042a916chdf.jpg",
+  "aboutImage": "photos/1780872594912-hc06er3boaavjfo.jpg",
+  "about": "test 123",
+  "photos": [
+    {
+      "src": "photos/1780870207991-3fe27298a4bd445b3a0cdeb0fea4e78d.jpg",
+      "alt": ""
+    }
+  ],
+  "media": [
+    {
+      "src": "media/1780871105648-img_0230.mov",
+      "alt": ""
+    }
+  ]
+}

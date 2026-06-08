@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('./server.js'\\)\")",
+      "Bash(node --check server.js)",
+      "Bash(npm audit *)",
+      "Bash(npm uninstall *)",
+      "Bash(node -e \"const m = require\\('multer'\\); console.log\\(require\\('./node_modules/multer/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/busboy/package.json'\\).version\\)\")"
+    ]
+  }
+}

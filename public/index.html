@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Variables & Reset ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:      #1e1e1e;
+      --warm-black: #e8e4dc;
+      --warm-gray:  #9e9890;
+      --border:     rgba(255,255,255,0.1);
+      --accent:     #c8a97e;
+      --ease:       cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 64px; /* clears the fixed navbar */
+    }
+
+    body {
+      background: var(--cream);
+      color: var(--warm-black);
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      line-height: 1.7;
+      overflow-x: hidden;
+      animation: pageFadeIn 0.5s ease both;
+    }
+
+    /* ── Global animations ──────────────────────────────────── */
+    @keyframes pageFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* Scroll-reveal: elements with .fade-up start hidden, .visible reveals them */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(36px);
+      transition: opacity 0.75s var(--ease), transform 0.75s var(--ease);
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* Stagger child items */
+    .fade-up:nth-child(2) { transition-delay: 0.08s; }
+    .fade-up:nth-child(3) { transition-delay: 0.16s; }
+    .fade-up:nth-child(4) { transition-delay: 0.24s; }
+    .fade-up:nth-child(5) { transition-delay: 0.32s; }
+    .fade-up:nth-child(6) { transition-delay: 0.40s; }
+
+    /* ── Navbar ─────────────────────────────────────────────── */
+    #navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2.5rem;
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    #navbar.scrolled {
+      background: var(--cream);
+      box-shadow: 0 1px 16px rgba(0,0,0,0.06);
+    }
+
+    .nav-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      transition: color 0.4s ease;
+    }
+
+    #navbar.scrolled .nav-brand { color: var(--warm-black); }
+
+    .nav-right { display: flex; align-items: center; gap: 1.25rem; }
+
+    /* Pill "Get In Touch" */
+    .btn-contact {
+      border: 1.5px solid rgba(255,255,255,0.8);
+      color: #fff;
+      background: transparent;
+      padding: 0.45rem 1.3rem;
+      border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      transition: border-color 0.4s, color 0.4s, background 0.25s;
+    }
+    .btn-contact:hover { background: rgba(255,255,255,0.12); }
+
+    #navbar.scrolled .btn-contact {
+      border-color: var(--warm-black);
+      color: var(--warm-black);
+    }
+    #navbar.scrolled .btn-contact:hover { background: rgba(255,255,255,0.08); }
+
+    /* Hamburger */
+    .hamburger {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+    .hamburger span {
+      display: block;
+      width: 22px; height: 1.5px;
+      background: #fff;
+      border-radius: 2px;
+      transition: background 0.4s, transform 0.35s var(--ease), opacity 0.3s;
+      transform-origin: center;
+    }
+    #navbar.scrolled .hamburger span { background: var(--warm-black); }
+
+    /* Animate hamburger → X when menu is open */
+    .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); background: #fff; }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); background: #fff; }
+    #navbar.scrolled .hamburger.open span { background: #fff; }
+
+    /* ── Full-screen Nav Overlay ─────────────────────────────── */
+    #nav-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(12, 10, 8, 0.97);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+    #nav-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .nav-menu-link {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      font-weight: 700;
+      color: rgba(245,240,232,0.85);
+      text-decoration: none;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+      transform: translateY(24px);
+      opacity: 0;
+      transition: transform 0.5s var(--ease), opacity 0.5s var(--ease), color 0.2s;
+    }
+    #nav-overlay.open .nav-menu-link { transform: translateY(0); opacity: 1; }
+
+    /* Stagger each nav item */
+    #nav-overlay.open .nav-menu-link:nth-child(1) { transition-delay: 0.08s; }
+    #nav-overlay.open .nav-menu-link:nth-child(2) { transition-delay: 0.14s; }
+    #nav-overlay.open .nav-menu-link:nth-child(3) { transition-delay: 0.20s; }
+    #nav-overlay.open .nav-menu-link:nth-child(4) { transition-delay: 0.26s; }
+
+    .nav-menu-link:hover { color: var(--accent); }
+
+    /* Small Instagram link at the bottom of overlay */
+    .nav-overlay-ig {
+      position: absolute;
+      bottom: 2.5rem;
+      color: rgba(245,240,232,0.35);
+      text-decoration: none;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+      transform: translateY(12px);
+      opacity: 0;
+    }
+    #nav-overlay.open .nav-overlay-ig {
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 0.5s var(--ease) 0.32s, opacity 0.5s var(--ease) 0.32s, color 0.2s;
+    }
+    .nav-overlay-ig:hover { color: rgba(245,240,232,0.7); }
+
+    /* ── Hero — Slideshow ────────────────────────────────────── */
+    #home {
+      position: relative;
+      height: 100vh;
+      height: 100dvh; /* dynamic viewport height — stays correct in browser fullscreen */
+      min-height: 600px;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+      background: #1a1510;
+    }
+
+    /* Each slide is an absolutely-positioned layer */
+    .hero-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      overflow: hidden; /* clips the blurred background's overshoot edges */
+      background: #0d0b08;
+      transition: opacity 1.6s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: opacity;
+    }
+    .hero-slide.active { opacity: 1; }
+
+    /* Blurred, darkened copy of the image — fills the space behind the main image */
+    .hero-bg {
+      position: absolute;
+      inset: -40px; /* overshoot so blur edge-fade is clipped by overflow:hidden above */
+      width: calc(100% + 80px);
+      height: calc(100% + 80px);
+      object-fit: cover;
+      object-position: center;
+      filter: blur(22px) brightness(0.28) saturate(0.6);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Foreground: full picture, never cropped */
+    .hero-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Gradient overlay so text is always readable */
+    .hero-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.75) 0%,
+        rgba(0,0,0,0.2)  40%,
+        transparent 100%
+      );
+      z-index: 1;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      padding: 0 2.5rem 4.5rem;
+      max-width: 760px;
+    }
+
+    .hero-name {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(3rem, 9vw, 7rem);
+      font-weight: 900;
+      color: #fff;
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-tagline {
+      margin-top: 1rem;
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      color: rgba(255,255,255,0.68);
+      font-weight: 300;
+      letter-spacing: 0.06em;
+    }
+
+    /* Slideshow dots — bottom right */
+    .hero-dots {
+      position: absolute;
+      bottom: 2rem;
+      right: 2.5rem;
+      z-index: 3;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .hero-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      cursor: pointer;
+      border: none;
+      padding: 0;
+      transition: background 0.35s, transform 0.35s;
+    }
+    .hero-dot.active {
+      background: #fff;
+      transform: scale(1.4);
+    }
+    .hero-dot:hover { background: rgba(255,255,255,0.7); }
+
+    /* ── Common Section Styles ──────────────────────────────── */
+    .section-inner {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 5.5rem 2.5rem;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--warm-gray);
+      margin-bottom: 0.4rem;
+    }
+
+    .section-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 3rem;
+    }
+
+    /* Thin ruled separator between sections */
+    section + section { border-top: 1px solid var(--border); }
+
+    /* ── About ──────────────────────────────────────────────── */
+    #about .section-inner {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 4rem;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      #about .section-inner { grid-template-columns: 1fr; gap: 1.5rem; }
+    }
+
+    .about-meta { padding-top: 0.25rem; }
+    .about-meta .section-heading { margin-bottom: 0; }
+
+    .about-body {
+      font-size: clamp(1rem, 1.8vw, 1.15rem);
+      color: #e9e6e2;
+      line-height: 1.85;
+      white-space: pre-line;
+    }
+
+    .about-img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 5px;
+      margin-top: 1.75rem;
+      display: block;
+    }
+
+    /* ── Media (Videos) ─────────────────────────────────────── */
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    @media (min-width: 768px) {
+      .media-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    }
+
+    .media-item {
+      position: relative;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      border-radius: 5px;
+      cursor: pointer;
+      background: #1e1a16;
+    }
+
+    .media-item video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.5s var(--ease);
+    }
+    .media-item:hover video { transform: scale(1.04); }
+
+    /* Play button overlay */
+    .media-play {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.2);
+      transition: background 0.3s;
+    }
+    .media-item:hover .media-play { background: rgba(0,0,0,0.35); }
+
+    .play-icon {
+      width: 48px; height: 48px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: scale(1);
+      transition: transform 0.3s var(--ease), background 0.2s;
+    }
+    .media-item:hover .play-icon { transform: scale(1.12); background: #fff; }
+
+    .play-icon svg { width: 18px; height: 18px; margin-left: 2px; fill: #1a1a1a; }
+
+    /* ── Gallery (Photos) ───────────────────────────────────── */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .photo-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    }
+
+    .photo-item {
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      aspect-ratio: 4/5;
+      cursor: pointer;
+      background: #e8e2d8;
+    }
+
+    .photo-item img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.55s var(--ease);
+    }
+    .photo-item:hover img { transform: scale(1.06); }
+
+    /* Empty state */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--warm-gray);
+      font-size: 0.9rem;
+    }
+
+    /* ── Photo Lightbox ─────────────────────────────────────── */
+    #photo-lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(8,6,4,0.96);
+      align-items: center;
+      justify-content: center;
+      animation: lbFadeIn 0.25s ease both;
+    }
+    #photo-lightbox.active { display: flex; }
+
+    @keyframes lbFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .lb-img-wrap {
+      max-width: 92vw;
+      max-height: 88vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #lb-img {
+      max-width: 92vw;
+      max-height: 88vh;
+      object-fit: contain;
+      border-radius: 3px;
+      user-select: none;
+      animation: lbImgIn 0.3s var(--ease) both;
+    }
+
+    @keyframes lbImgIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .lb-close {
+      position: fixed;
+      top: 1.4rem; right: 1.75rem;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      font-size: 2rem;
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.2s, transform 0.2s;
+    }
+    .lb-close:hover { color: #fff; transform: scale(1.15); }
+
+    .lb-arrow {
+      position: fixed;
+      top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      font-size: 1.4rem;
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, transform 0.2s;
+      user-select: none;
+    }
+    .lb-arrow:hover { background: rgba(255,255,255,0.16); transform: translateY(-50%) scale(1.08); }
+    .lb-prev { left: 1.25rem; }
+    .lb-next { right: 1.25rem; }
+
+    .lb-counter {
+      position: fixed;
+      bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.38);
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+    }
+
+    /* ── Video Lightbox ─────────────────────────────────────── */
+    #video-lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(4,3,2,0.97);
+      align-items: center;
+      justify-content: center;
+      animation: lbFadeIn 0.25s ease both;
+    }
+    #video-lightbox.active { display: flex; }
+
+    #lb-video {
+      max-width: 92vw;
+      max-height: 85vh;
+      width: 900px;
+      border-radius: 4px;
+      outline: none;
+      animation: lbImgIn 0.3s var(--ease) both;
+    }
+
+    /* ── Footer ─────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 2.5rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .footer-ig {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      color: var(--warm-gray);
+      text-decoration: none;
+      font-size: 0.88rem;
+      letter-spacing: 0.05em;
+      transition: color 0.2s, gap 0.3s;
+    }
+    .footer-ig:hover { color: var(--warm-black); gap: 0.75rem; }
+
+    .ig-icon { width: 17px; height: 17px; fill: currentColor; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Full-screen Nav Overlay ───────────────────────────── -->
+  <div id="nav-overlay" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <a href="#home"    class="nav-menu-link" data-nav>Home</a>
+    <a href="#about"   class="nav-menu-link" data-nav>About</a>
+    <a href="#media"   class="nav-menu-link" data-nav>Media</a>
+    <a href="#gallery" class="nav-menu-link" data-nav>Gallery</a>
+    <a href="#contact" class="nav-overlay-ig" id="nav-overlay-ig" data-nav>@lucrolla</a>
+  </div>
+
+  <!-- ── Fixed Navbar ─────────────────────────────────────── -->
+  <nav id="navbar" aria-label="Main navigation">
+    <a href="#home" class="nav-brand" id="nav-brand-text">Portfolio</a>
+    <div class="nav-right">
+      <!-- "Get In Touch" scrolls to the Instagram footer -->
+      <a href="#contact" class="btn-contact">Get In Touch</a>
+      <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ── Hero Slideshow ────────────────────────────────────── -->
+  <section id="home" aria-label="Hero">
+    <!-- Slides injected by JS -->
+    <div id="hero-slides"></div>
+    <div class="hero-gradient"></div>
+    <div class="hero-content">
+      <h1 class="hero-name" id="hero-name">&#8203;</h1>
+      <p class="hero-tagline" id="hero-tagline"></p>
+    </div>
+    <div class="hero-dots" id="hero-dots" aria-label="Slide navigation"></div>
+  </section>
+
+  <!-- ── About ─────────────────────────────────────────────── -->
+  <section id="about" style="display:none">
+    <div class="section-inner">
+      <div class="about-meta fade-up">
+        <p class="section-label">About</p>
+        <h2 class="section-heading">The Story</h2>
+        <img id="about-img" src="" alt="" class="about-img" style="display:none" />
+      </div>
+      <p class="about-body fade-up" id="about-text"></p>
+    </div>
+  </section>
+
+  <!-- ── Media ─────────────────────────────────────────────── -->
+  <section id="media" style="display:none">
+    <div class="section-inner">
+      <p class="section-label fade-up">Media</p>
+      <h2 class="section-heading fade-up">Film</h2>
+      <div class="media-grid" id="media-grid"></div>
+    </div>
+  </section>
+
+  <!-- ── Gallery ───────────────────────────────────────────── -->
+  <section id="gallery">
+    <div class="section-inner">
+      <p class="section-label fade-up">Selected Work</p>
+      <h2 class="section-heading fade-up">Gallery</h2>
+      <div class="photo-grid" id="photo-grid"></div>
+    </div>
+  </section>
+
+  <!-- ── Footer / Contact ──────────────────────────────────── -->
+  <footer id="contact">
+    <a class="footer-ig" id="footer-ig-link" href="#" target="_blank" rel="noopener noreferrer">
+      <svg class="ig-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+      </svg>
+      <span id="footer-ig-text">@instagram</span>
+    </a>
+  </footer>
+
+  <!-- ── Photo Lightbox ────────────────────────────────────── -->
+  <div id="photo-lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <button class="lb-close" id="lb-photo-close" aria-label="Close">&times;</button>
+    <button class="lb-arrow lb-prev" id="lb-prev" aria-label="Previous">&#8592;</button>
+    <div class="lb-img-wrap">
+      <img id="lb-img" src="" alt="" />
+    </div>
+    <button class="lb-arrow lb-next" id="lb-next" aria-label="Next">&#8594;</button>
+    <div class="lb-counter" id="lb-counter"></div>
+  </div>
+
+  <!-- ── Video Lightbox ────────────────────────────────────── -->
+  <div id="video-lightbox" role="dialog" aria-modal="true" aria-label="Video player">
+    <button class="lb-close" id="lb-video-close" aria-label="Close">&times;</button>
+    <video id="lb-video" controls playsinline></video>
+  </div>
+
+  <!-- ── JavaScript ────────────────────────────────────────── -->
+  <script>
+    // ── State ──────────────────────────────────────────────────
+    let photos = [];
+    let currentPhotoIndex = 0;
+    let slideInterval = null;
+    let currentSlide  = 0;
+    let heroSlides    = [];
+
+    // ── Load config & populate everything ─────────────────────
+    async function loadSite() {
+      try {
+        const res  = await fetch('/config');
+        const data = await res.json();
+
+        // Brand / title
+        const name = data.name || 'Portfolio';
+        document.getElementById('nav-brand-text').textContent = name;
+        document.title = name;
+        document.getElementById('hero-name').textContent    = name;
+        document.getElementById('hero-tagline').textContent = data.tagline || '';
+
+        // Instagram
+        const ig = data.instagram || '';
+        document.getElementById('footer-ig-text').textContent = ig ? `@${ig}` : '';
+        document.getElementById('footer-ig-link').href = ig ? `https://instagram.com/${ig}` : '#';
+        const navIg = document.getElementById('nav-overlay-ig');
+        navIg.textContent = ig ? `@${ig}` : '';
+
+        // Hero slideshow
+        const images = data.heroImages && data.heroImages.length
+          ? data.heroImages
+          : (data.heroImage ? [data.heroImage] : []);
+        initSlideshow(images);
+
+        // About section — show if text OR image is set
+        if ((data.about && data.about.trim()) || data.aboutImage) {
+          document.getElementById('about').style.display = '';
+          if (data.about) document.getElementById('about-text').textContent = data.about;
+          if (data.aboutImage) {
+            const aImg = document.getElementById('about-img');
+            aImg.src           = data.aboutImage;
+            aImg.style.display = 'block';
+          }
+        }
+
+        // Media section
+        if (data.media && data.media.length > 0) {
+          renderMedia(data.media);
+          document.getElementById('media').style.display = '';
+        }
+
+        // Gallery
+        photos = data.photos || [];
+        renderGallery(photos);
+
+        // Start scroll-reveal observer after DOM is ready
+        initScrollReveal();
+
+      } catch (err) {
+        console.error('Could not load site config:', err);
+      }
+    }
+
+    // ── Hero Slideshow ─────────────────────────────────────────
+    function initSlideshow(images) {
+      const container = document.getElementById('hero-slides');
+      const dotsWrap  = document.getElementById('hero-dots');
+      container.innerHTML = '';
+      dotsWrap.innerHTML  = '';
+      heroSlides = images;
+
+      if (images.length === 0) return;
+
+      images.forEach((src, i) => {
+        const slide = document.createElement('div');
+        slide.className = 'hero-slide' + (i === 0 ? ' active' : '');
+
+        // Blurred background — same image, darkened and blurred to fill empty space
+        const bg = document.createElement('img');
+        bg.src = src; bg.alt = ''; bg.draggable = false; bg.className = 'hero-bg';
+        slide.appendChild(bg);
+
+        // Foreground — full uncropped picture
+        const img = document.createElement('img');
+        img.src = src; img.alt = ''; img.draggable = false; img.className = 'hero-img';
+        slide.appendChild(img);
+
+        container.appendChild(slide);
+      });
+
+      if (images.length > 1) {
+        // Build dots
+        images.forEach((_, i) => {
+          const dot = document.createElement('button');
+          dot.className = 'hero-dot' + (i === 0 ? ' active' : '');
+          dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+          dot.addEventListener('click', () => goToSlide(i));
+          dotsWrap.appendChild(dot);
+        });
+
+        // Auto-advance every 4 seconds — always running
+        slideInterval = setInterval(nextSlide, 4000);
+      }
+    }
+
+    function goToSlide(index) {
+      const slides = document.querySelectorAll('.hero-slide');
+      const dots   = document.querySelectorAll('.hero-dot');
+      slides[currentSlide].classList.remove('active');
+      if (dots[currentSlide]) dots[currentSlide].classList.remove('active');
+      currentSlide = index;
+      slides[currentSlide].classList.add('active');
+      if (dots[currentSlide]) dots[currentSlide].classList.add('active');
+    }
+
+    function nextSlide() {
+      goToSlide((currentSlide + 1) % heroSlides.length);
+    }
+
+    // ── Media (Video) Grid ─────────────────────────────────────
+    function renderMedia(mediaArr) {
+      const grid = document.getElementById('media-grid');
+      grid.innerHTML = '';
+
+      mediaArr.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'media-item fade-up';
+
+        const video = document.createElement('video');
+        video.src      = item.src;
+        video.muted    = true;
+        video.preload  = 'metadata';
+        video.setAttribute('playsinline', '');
+
+        // Silent hover preview (desktop only)
+        div.addEventListener('mouseenter', () => video.play().catch(() => {}));
+        div.addEventListener('mouseleave', () => { video.pause(); video.currentTime = 0; });
+
+        // Click → open video lightbox with sound
+        div.addEventListener('click', () => openVideoLightbox(item.src));
+
+        const playOverlay = document.createElement('div');
+        playOverlay.className = 'media-play';
+        playOverlay.innerHTML = `
+          <div class="play-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>`;
+
+        div.appendChild(video);
+        div.appendChild(playOverlay);
+        grid.appendChild(div);
+      });
+    }
+
+    // ── Gallery (Photos) ───────────────────────────────────────
+    function renderGallery(photosArr) {
+      const grid = document.getElementById('photo-grid');
+      grid.innerHTML = '';
+
+      if (!photosArr || photosArr.length === 0) {
+        grid.innerHTML = '<p class="empty-state">No photos yet.</p>';
+        return;
+      }
+
+      photosArr.forEach((photo, i) => {
+        const item = document.createElement('div');
+        item.className = 'photo-item fade-up';
+        item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" />`;
+        item.addEventListener('click', () => openPhotoLightbox(i));
+        grid.appendChild(item);
+      });
+    }
+
+    // ── Photo Lightbox ─────────────────────────────────────────
+    function openPhotoLightbox(index) {
+      currentPhotoIndex = index;
+      updatePhotoLightbox();
+      document.getElementById('photo-lightbox').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function updatePhotoLightbox() {
+      document.getElementById('lb-img').src =
+        photos[currentPhotoIndex].src;
+      document.getElementById('lb-counter').textContent =
+        `${currentPhotoIndex + 1} / ${photos.length}`;
+    }
+
+    function closePhotoLightbox() {
+      document.getElementById('photo-lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('lb-photo-close').addEventListener('click', closePhotoLightbox);
+    document.getElementById('lb-prev').addEventListener('click', () => {
+      currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+      updatePhotoLightbox();
+    });
+    document.getElementById('lb-next').addEventListener('click', () => {
+      currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
+      updatePhotoLightbox();
+    });
+    document.getElementById('photo-lightbox').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('photo-lightbox')) closePhotoLightbox();
+    });
+
+    // ── Video Lightbox ─────────────────────────────────────────
+    function openVideoLightbox(src) {
+      const vid = document.getElementById('lb-video');
+      vid.src = src;
+      document.getElementById('video-lightbox').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      vid.play().catch(() => {});
+    }
+
+    function closeVideoLightbox() {
+      const vid = document.getElementById('lb-video');
+      vid.pause();
+      vid.src = '';
+      document.getElementById('video-lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('lb-video-close').addEventListener('click', closeVideoLightbox);
+    document.getElementById('video-lightbox').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('video-lightbox')) closeVideoLightbox();
+    });
+
+    // ── Keyboard navigation ────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      // Photo lightbox
+      if (document.getElementById('photo-lightbox').classList.contains('active')) {
+        if (e.key === 'ArrowLeft')  document.getElementById('lb-prev').click();
+        if (e.key === 'ArrowRight') document.getElementById('lb-next').click();
+        if (e.key === 'Escape')     closePhotoLightbox();
+      }
+      // Video lightbox
+      if (document.getElementById('video-lightbox').classList.contains('active')) {
+        if (e.key === 'Escape') closeVideoLightbox();
+      }
+      // Nav overlay
+      if (document.getElementById('nav-overlay').classList.contains('open')) {
+        if (e.key === 'Escape') closeNav();
+      }
+    });
+
+    // ── Navbar: transparent → solid on scroll ─────────────────
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      navbar.classList.toggle('scrolled', window.scrollY > 80);
+    }, { passive: true });
+
+    // ── Nav Overlay ────────────────────────────────────────────
+    const hamburger   = document.getElementById('hamburger');
+    const navOverlay  = document.getElementById('nav-overlay');
+
+    function openNav() {
+      navOverlay.classList.add('open');
+      hamburger.classList.add('open');
+      hamburger.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeNav() {
+      navOverlay.classList.remove('open');
+      hamburger.classList.remove('open');
+      hamburger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+
+    hamburger.addEventListener('click', () => {
+      navOverlay.classList.contains('open') ? closeNav() : openNav();
+    });
+
+    // Close overlay and scroll to section when a nav link is clicked
+    document.querySelectorAll('[data-nav]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = link.getAttribute('href');
+        closeNav();
+        // Brief delay lets the overlay start fading before scroll fires
+        setTimeout(() => {
+          const target = document.querySelector(targetId);
+          if (target) target.scrollIntoView({ behavior: 'smooth' });
+        }, 280);
+      });
+    });
+
+    // ── Scroll-reveal (IntersectionObserver) ──────────────────
+    function initScrollReveal() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.08 });
+
+      document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    }
+
+    // ── Init ───────────────────────────────────────────────────
+    loadSite();
+  </script>
+
+</body>
+</html>
