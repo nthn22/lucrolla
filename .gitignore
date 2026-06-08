@@ -9,3 +9,7 @@ public/photos/*
 !public/photos/.gitkeep
 public/media/*
 !public/media/.gitkeep
+
+#misc
+.claude
+CLAUDE.md
