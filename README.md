@@ -20,11 +20,9 @@ npm start
 
 ## Admin Panel
 
-Password: `lucrolla123`
-
 To change the password, open `public/admin.html` and find this line near the top of the `<script>` section:
 ```js
-const ADMIN_PASSWORD = 'lucrolla123';
+const ADMIN_PASSWORD = 'mypasswordhere';
 ```
 Change the value and save.
 
