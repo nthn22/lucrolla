@@ -341,19 +341,27 @@
       } catch { showToast('Error saving', 'err'); }
     }
 
-    // ── Generic upload ────────────────────────────────────────
+    // ── Generic upload — one file per request ─────────────────
     async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess) {
       if (!files || !files.length) return;
-      const form = new FormData();
-      files.forEach(f => form.append(fieldName, f));
-      showProg(progKey, 40);
-      try {
-        const res  = await fetch(endpoint, { method: 'POST', headers: authHeaders(), body: form });
-        const data = await res.json();
+      let uploaded = 0;
+      let lastData = null;
+      for (const file of files) {
+        showProg(progKey, Math.round((uploaded / files.length) * 90) + 5);
+        const form = new FormData();
+        form.append(fieldName, file);
+        try {
+          const res  = await fetch(endpoint, { method: 'POST', headers: authHeaders(), body: form });
+          const data = await res.json();
+          if (data.success) { config = data.config; lastData = data; uploaded++; }
+          else { showToast(data.error || 'Upload failed', 'err'); break; }
+        } catch { showToast('Upload error', 'err'); break; }
+      }
+      if (uploaded > 0) {
         showProg(progKey, 100);
-        if (data.success) { config = data.config; onSuccess(data); showToast(`${files.length} file${files.length > 1 ? 's' : ''} uploaded`); }
-        else showToast(data.error || 'Upload failed', 'err');
-      } catch (err) { showToast('Upload error', 'err'); }
+        onSuccess(lastData);
+        showToast(`${uploaded} file${uploaded > 1 ? 's' : ''} uploaded`);
+      }
       setTimeout(() => hideProg(progKey), 600);
     }
 
