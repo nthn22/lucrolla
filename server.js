@@ -27,16 +27,11 @@ const MEDIA_DIR  = path.join(__dirname, 'public', 'media');
 
 // Initialize config on fresh volume (first deploy)
 if (!fs.existsSync(CONFIG_PATH)) {
-  const localConfig = path.join(__dirname, 'config.json');
-  if (fs.existsSync(localConfig)) {
-    fs.copyFileSync(localConfig, CONFIG_PATH);
-  } else {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify({
-      name: 'Lucrolla', tagline: '', instagram: '',
-      heroImages: [], heroImage: '', aboutImage: '', about: '',
-      photos: [], media: []
-    }, null, 2));
-  }
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify({
+    name: 'Lucrolla', tagline: '', instagram: '',
+    heroImages: [], heroImage: '', aboutImage: '', about: '',
+    photos: [], media: []
+  }, null, 2));
 }
 
 // ── Cloudinary ───────────────────────────────────────────────
