@@ -27,6 +27,7 @@ const MEDIA_DIR  = path.join(__dirname, 'public', 'media');
 
 // Initialize config on fresh volume (first deploy)
 if (!fs.existsSync(CONFIG_PATH)) {
+  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify({
     name: 'Lucrolla', tagline: '', instagram: '',
     heroImages: [], heroImage: '', aboutImage: '', about: '',
