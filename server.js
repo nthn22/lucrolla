@@ -16,12 +16,28 @@ const cloudinary = require('cloudinary').v2;
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-const CONFIG_PATH = path.join(__dirname, 'config.json');
+const CONFIG_PATH = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'config.json')
+  : path.join(__dirname, 'config.json');
 
 // Keep local dirs for legacy local-dev compatibility
 const PHOTOS_DIR = path.join(__dirname, 'public', 'photos');
 const MEDIA_DIR  = path.join(__dirname, 'public', 'media');
 [PHOTOS_DIR, MEDIA_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+
+// Initialize config on fresh volume (first deploy)
+if (!fs.existsSync(CONFIG_PATH)) {
+  const localConfig = path.join(__dirname, 'config.json');
+  if (fs.existsSync(localConfig)) {
+    fs.copyFileSync(localConfig, CONFIG_PATH);
+  } else {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify({
+      name: 'Lucrolla', tagline: '', instagram: '',
+      heroImages: [], heroImage: '', aboutImage: '', about: '',
+      photos: [], media: []
+    }, null, 2));
+  }
+}
 
 // ── Cloudinary ───────────────────────────────────────────────
 cloudinary.config({
