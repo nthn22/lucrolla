@@ -25,6 +25,8 @@ const PHOTOS_DIR = path.join(__dirname, 'public', 'photos');
 const MEDIA_DIR  = path.join(__dirname, 'public', 'media');
 [PHOTOS_DIR, MEDIA_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
 
+console.log(`Config path: ${CONFIG_PATH}`);
+
 // Initialize config on fresh volume (first deploy)
 if (!fs.existsSync(CONFIG_PATH)) {
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
