@@ -16,26 +16,13 @@ const cloudinary = require('cloudinary').v2;
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-const CONFIG_PATH = process.env.DATA_DIR
-  ? path.join(process.env.DATA_DIR, 'config.json')
-  : path.join(__dirname, 'config.json');
+const CONFIG_PATH   = path.join(__dirname, 'config.json');
+const CLOUDINARY_CONFIG_ID = 'portfolio/site-config';
 
 // Keep local dirs for legacy local-dev compatibility
 const PHOTOS_DIR = path.join(__dirname, 'public', 'photos');
 const MEDIA_DIR  = path.join(__dirname, 'public', 'media');
 [PHOTOS_DIR, MEDIA_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
-
-console.log(`Config path: ${CONFIG_PATH}`);
-
-// Initialize config on fresh volume (first deploy)
-if (!fs.existsSync(CONFIG_PATH)) {
-  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify({
-    name: 'Lucrolla', tagline: '', instagram: '',
-    heroImages: [], heroImage: '', aboutImage: '', about: '',
-    photos: [], media: []
-  }, null, 2));
-}
 
 // ── Cloudinary ───────────────────────────────────────────────
 cloudinary.config({
@@ -78,9 +65,18 @@ const videoUpload = multer({
   }
 });
 
-// ── Helpers ──────────────────────────────────────────────────
+// ── Config helpers ───────────────────────────────────────────
 function readConfig() { return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); }
-function writeConfig(data) { fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8'); }
+
+function writeConfig(data) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8');
+  // Persist to Cloudinary so config survives redeploys
+  const stream = cloudinary.uploader.upload_stream(
+    { public_id: CLOUDINARY_CONFIG_ID, resource_type: 'raw', overwrite: true, invalidate: true },
+    (err) => { if (err) console.error('Config sync to Cloudinary failed:', err.message); }
+  );
+  stream.end(Buffer.from(JSON.stringify(data, null, 2)));
+}
 
 // Normalise config for the frontend — strips internal cloudId, flattens heroImages to string array
 function publicConfig(data) {
@@ -99,6 +95,31 @@ function uploadBuffer(buffer, options) {
     });
     stream.end(buffer);
   });
+}
+
+// Download config from Cloudinary and write to local file
+async function restoreConfigFromCloudinary() {
+  try {
+    const resource = await cloudinary.api.resource(CLOUDINARY_CONFIG_ID, { resource_type: 'raw' });
+    const res = await fetch(resource.secure_url + '?v=' + resource.version);
+    const data = await res.json();
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2));
+    console.log('Config restored from Cloudinary');
+  } catch (err) {
+    if (err.http_code === 404 || err.error?.http_code === 404) {
+      // First ever deploy — no config in Cloudinary yet, use local default
+      console.log('No config in Cloudinary yet, using local default');
+      if (!fs.existsSync(CONFIG_PATH)) {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify({
+          name: 'Lucrolla', tagline: '', instagram: '',
+          heroImages: [], heroImage: '', aboutImage: '', about: '',
+          photos: [], media: []
+        }, null, 2));
+      }
+    } else {
+      console.error('Could not restore config from Cloudinary:', err.message || err);
+    }
+  }
 }
 
 // ── Routes ───────────────────────────────────────────────────
@@ -261,10 +282,13 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start server ─────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n📷  Portfolio running at http://localhost:${PORT}`);
-  console.log(`🔒  Admin panel at  http://localhost:${PORT}/admin.html\n`);
-  if (!process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME === 'your_cloud_name') {
-    console.warn('⚠️   Cloudinary not configured — fill in CLOUDINARY_* values in .env\n');
-  }
+// Restore config from Cloudinary before accepting requests
+restoreConfigFromCloudinary().then(() => {
+  app.listen(PORT, () => {
+    console.log(`\n📷  Portfolio running at http://localhost:${PORT}`);
+    console.log(`🔒  Admin panel at  http://localhost:${PORT}/admin.html\n`);
+    if (!process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME === 'your_cloud_name') {
+      console.warn('⚠️   Cloudinary not configured — fill in CLOUDINARY_* values in .env\n');
+    }
+  });
 });
