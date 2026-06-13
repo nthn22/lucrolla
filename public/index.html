@@ -514,7 +514,6 @@
       background: rgba(8,6,4,0.96);
       align-items: center;
       justify-content: center;
-      overflow: hidden;       /* clips image as it slides off-screen during swipe */
       touch-action: pan-y;   /* lets iOS pass horizontal touches to our swipe JS */
       animation: lbFadeIn 0.25s ease both;
     }
@@ -1101,88 +1100,16 @@
       document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
     }
 
-    // ── Swipe photo lightbox with slide animation ─────────────
+    // ── Swipe to navigate photo lightbox on mobile ────────────
     (function() {
-      const SNAP_MS   = 280;
-      const SNAP_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
-      const THRESHOLD = 0.25;
-
-      const lb  = document.getElementById('photo-lightbox');
-      const img = document.getElementById('lb-img');
-
-      let startX = 0, startY = 0;
-      let gesture   = null;
-      let animating = false;
-
-      lb.addEventListener('touchstart', e => {
-        if (animating) return;
-        startX  = e.changedTouches[0].screenX;
-        startY  = e.changedTouches[0].screenY;
-        gesture = null;
-        img.style.transition = 'none';
-      }, { passive: true });
-
-      lb.addEventListener('touchmove', e => {
-        if (animating) return;
-        const dx = e.changedTouches[0].screenX - startX;
-        const dy = e.changedTouches[0].screenY - startY;
-        if (!gesture) {
-          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-          gesture = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
-        }
-        if (gesture !== 'h') return;
-        img.style.transform = `translateX(${dx}px)`;
-      }, { passive: true });
-
+      let touchStartX = 0;
+      const lb = document.getElementById('photo-lightbox');
+      lb.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
       lb.addEventListener('touchend', e => {
-        if (animating || gesture !== 'h') {
-          img.style.transition = '';
-          img.style.transform  = '';
-          gesture = null;
-          return;
-        }
-        gesture = null;
-
-        const dx    = e.changedTouches[0].screenX - startX;
-        const w     = lb.offsetWidth;
-        const snapT = `transform ${SNAP_MS}ms ${SNAP_EASE}`;
-
-        if (Math.abs(dx) >= w * THRESHOLD && photos.length > 1) {
-          animating = true;
-          const goNext = dx < 0;
-          const exitX  = goNext ? -w : w;
-
-          // Slide current image off-screen
-          img.style.transition = snapT;
-          img.style.transform  = `translateX(${exitX}px)`;
-
-          setTimeout(() => {
-            // Update photo while image is off-screen
-            currentPhotoIndex = goNext
-              ? (currentPhotoIndex + 1) % photos.length
-              : (currentPhotoIndex - 1 + photos.length) % photos.length;
-            updatePhotoLightbox();
-
-            // Force reflow so transition: none is flushed before re-enabling
-            img.style.transition = 'none';
-            img.style.transform  = `translateX(${-exitX}px)`;
-            void img.offsetWidth; // flush pending styles synchronously
-            img.style.transition = snapT;
-            img.style.transform  = 'translateX(0)';
-            setTimeout(() => {
-              img.style.transition = '';
-              img.style.transform  = '';
-              animating = false;
-            }, SNAP_MS);
-          }, SNAP_MS);
-        } else {
-          // Spring back to center
-          img.style.transition = snapT;
-          img.style.transform  = 'translateX(0)';
-          setTimeout(() => {
-            img.style.transition = '';
-            img.style.transform  = '';
-          }, SNAP_MS);
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) document.getElementById('lb-next').click();
+          else          document.getElementById('lb-prev').click();
         }
       }, { passive: true });
     })();
