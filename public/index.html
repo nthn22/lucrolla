@@ -475,6 +475,35 @@
       font-size: 0.9rem;
     }
 
+    /* ── Pagination ─────────────────────────────────────────── */
+    #photo-pagination, #media-pagination {
+      display: flex;
+      justify-content: center;
+      margin-top: 2.5rem;
+    }
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .page-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--warm-gray);
+      width: 38px; height: 38px;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .page-btn.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 600; }
+    .page-btn:disabled { opacity: 0.3; cursor: default; }
+    .page-btn.arrow { font-size: 1rem; }
+
     /* ── Photo Lightbox ─────────────────────────────────────── */
     #photo-lightbox {
       display: none;
@@ -554,6 +583,11 @@
     .lb-arrow:hover { background: rgba(255,255,255,0.16); transform: translateY(-50%) scale(1.08); }
     .lb-prev { left: 1.25rem; }
     .lb-next { right: 1.25rem; }
+    @media (max-width: 600px) {
+      .lb-arrow { width: 56px; height: 56px; font-size: 1.6rem; }
+      .lb-prev { left: 0.5rem; }
+      .lb-next { right: 0.5rem; }
+    }
 
     .lb-counter {
       position: fixed;
@@ -661,6 +695,7 @@
       <p class="section-label fade-up">Media</p>
       <h2 class="section-heading fade-up">Film</h2>
       <div class="media-grid" id="media-grid"></div>
+      <div id="media-pagination"></div>
     </div>
   </section>
 
@@ -670,6 +705,7 @@
       <p class="section-label fade-up">Selected Work</p>
       <h2 class="section-heading fade-up">Gallery</h2>
       <div class="photo-grid" id="photo-grid"></div>
+      <div id="photo-pagination"></div>
     </div>
   </section>
 
@@ -706,6 +742,9 @@
     let photos = [];
     let currentPhotoIndex = 0;
     let slideInterval = null;
+    const PAGE_SIZE  = 20;
+    let photoPage = 0;
+    let mediaPage = 0;
     let currentSlide  = 0;
     let heroSlides    = [];
 
@@ -820,12 +859,50 @@
       goToSlide((currentSlide + 1) % heroSlides.length);
     }
 
+    // ── Pagination helper ──────────────────────────────────────
+    function renderPagination(containerId, currentPage, totalPages, onPageChange) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      if (totalPages <= 1) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'pagination';
+
+      const prev = document.createElement('button');
+      prev.className = 'page-btn arrow';
+      prev.textContent = '←';
+      prev.disabled = currentPage === 0;
+      prev.addEventListener('click', () => onPageChange(currentPage - 1));
+      wrap.appendChild(prev);
+
+      for (let i = 0; i < totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'page-btn' + (i === currentPage ? ' active' : '');
+        btn.textContent = i + 1;
+        btn.addEventListener('click', () => onPageChange(i));
+        wrap.appendChild(btn);
+      }
+
+      const next = document.createElement('button');
+      next.className = 'page-btn arrow';
+      next.textContent = '→';
+      next.disabled = currentPage === totalPages - 1;
+      next.addEventListener('click', () => onPageChange(currentPage + 1));
+      wrap.appendChild(next);
+
+      container.appendChild(wrap);
+    }
+
     // ── Media (Video) Grid ─────────────────────────────────────
     function renderMedia(mediaArr) {
       const grid = document.getElementById('media-grid');
       grid.innerHTML = '';
 
-      mediaArr.forEach((item, index) => {
+      const totalPages = Math.ceil((mediaArr || []).length / PAGE_SIZE);
+      const start = mediaPage * PAGE_SIZE;
+      const pageItems = (mediaArr || []).slice(start, start + PAGE_SIZE);
+
+      pageItems.forEach((item) => {
         const div = document.createElement('div');
         div.className = 'media-item fade-up';
 
@@ -853,6 +930,12 @@
         div.appendChild(playOverlay);
         grid.appendChild(div);
       });
+
+      renderPagination('media-pagination', mediaPage, totalPages, (page) => {
+        mediaPage = page;
+        renderMedia(mediaArr);
+        document.getElementById('media').scrollIntoView({ behavior: 'smooth' });
+      });
     }
 
     // ── Gallery (Photos) ───────────────────────────────────────
@@ -862,16 +945,30 @@
 
       if (!photosArr || photosArr.length === 0) {
         grid.innerHTML = '<p class="empty-state">No photos yet.</p>';
+        document.getElementById('photo-pagination').innerHTML = '';
         return;
       }
 
-      photosArr.forEach((photo, i) => {
+      const totalPages = Math.ceil(photosArr.length / PAGE_SIZE);
+      const start = photoPage * PAGE_SIZE;
+      const pagePhotos = photosArr.slice(start, start + PAGE_SIZE);
+
+      pagePhotos.forEach((photo, i) => {
+        const globalIndex = start + i;
         const item = document.createElement('div');
         item.className = 'photo-item fade-up';
         item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" draggable="false" />`;
-        item.addEventListener('click', () => openPhotoLightbox(i));
+        item.addEventListener('click', () => openPhotoLightbox(globalIndex));
         grid.appendChild(item);
       });
+
+      renderPagination('photo-pagination', photoPage, totalPages, (page) => {
+        photoPage = page;
+        renderGallery(photosArr);
+        document.getElementById('gallery').scrollIntoView({ behavior: 'smooth' });
+      });
+
+      initScrollReveal();
     }
 
     // ── Photo Lightbox ─────────────────────────────────────────
@@ -1002,6 +1099,20 @@
 
       document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
     }
+
+    // ── Swipe to navigate photo lightbox on mobile ────────────
+    (function() {
+      let touchStartX = 0;
+      const lb = document.getElementById('photo-lightbox');
+      lb.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+      lb.addEventListener('touchend', e => {
+        const diff = touchStartX - e.changedTouches[0].screenX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) document.getElementById('lb-next').click();
+          else          document.getElementById('lb-prev').click();
+        }
+      }, { passive: true });
+    })();
 
     // ── Image protection ──────────────────────────────────────
     document.addEventListener('contextmenu', e => {
