@@ -449,8 +449,18 @@
       object-fit: cover;
       display: block;
       transition: transform 0.55s var(--ease);
+      -webkit-user-drag: none;
+      user-select: none;
     }
     .photo-item:hover img { transform: scale(1.06); }
+
+    /* Transparent overlay blocks right-click save on gallery images */
+    .photo-item::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+    }
 
     /* Empty state */
     .empty-state {
@@ -485,6 +495,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
+    }
+
+    /* Overlay blocks right-click save on lightbox image */
+    .lb-img-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
     }
 
     #lb-img {
@@ -674,7 +693,7 @@
   <!-- ── Video Lightbox ────────────────────────────────────── -->
   <div id="video-lightbox" role="dialog" aria-modal="true" aria-label="Video player">
     <button class="lb-close" id="lb-video-close" aria-label="Close">&times;</button>
-    <video id="lb-video" controls playsinline></video>
+    <video id="lb-video" controls playsinline controlsList="nodownload" oncontextmenu="return false"></video>
   </div>
 
   <!-- ── JavaScript ────────────────────────────────────────── -->
@@ -845,7 +864,7 @@
       photosArr.forEach((photo, i) => {
         const item = document.createElement('div');
         item.className = 'photo-item fade-up';
-        item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" />`;
+        item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" draggable="false" />`;
         item.addEventListener('click', () => openPhotoLightbox(i));
         grid.appendChild(item);
       });
@@ -979,6 +998,18 @@
 
       document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
     }
+
+    // ── Image protection ──────────────────────────────────────
+    document.addEventListener('contextmenu', e => {
+      if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') e.preventDefault();
+    });
+    document.addEventListener('keydown', e => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && ['s', 'u', 'p'].includes(e.key.toLowerCase())) e.preventDefault();
+    });
+    document.addEventListener('dragstart', e => {
+      if (e.target.tagName === 'IMG') e.preventDefault();
+    });
 
     // ── Init ───────────────────────────────────────────────────
     loadSite();
