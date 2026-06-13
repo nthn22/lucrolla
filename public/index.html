@@ -215,6 +215,7 @@
       align-items: flex-end;
       overflow: hidden;
       background: #1a1510;
+      touch-action: pan-y; /* let browser scroll vertically; our JS owns horizontal swipe */
     }
 
     /* Each slide is an absolutely-positioned layer */
@@ -1193,7 +1194,10 @@
 
       heroEl.addEventListener('touchend', (e) => {
         if (heroSlides.length <= 1 || gesture !== 'h') {
-          if (heroSlides.length > 1) slideInterval = setInterval(nextSlide, 4000);
+          if (heroSlides.length > 1) {
+            clearStyles(getSlides()); // restore CSS opacity transitions
+            slideInterval = setInterval(nextSlide, 4000);
+          }
           gesture = null;
           return;
         }
@@ -1228,6 +1232,16 @@
           }, SNAP_MS);
         }
         adjIdx = -1;
+      }, { passive: true });
+
+      // Restore slideshow if touch is cancelled (phone call, notification, etc.)
+      heroEl.addEventListener('touchcancel', () => {
+        gesture = null; adjIdx = -1;
+        if (heroSlides.length > 1) {
+          clearStyles(getSlides());
+          clearInterval(slideInterval);
+          slideInterval = setInterval(nextSlide, 4000);
+        }
       }, { passive: true });
     })();
 
