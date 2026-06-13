@@ -1163,18 +1163,17 @@
               : (currentPhotoIndex - 1 + photos.length) % photos.length;
             updatePhotoLightbox();
 
-            // Snap to opposite side (invisible while off-screen), then slide in
+            // Force reflow so transition: none is flushed before re-enabling
             img.style.transition = 'none';
             img.style.transform  = `translateX(${-exitX}px)`;
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              img.style.transition = snapT;
-              img.style.transform  = 'translateX(0)';
-              setTimeout(() => {
-                img.style.transition = '';
-                img.style.transform  = '';
-                animating = false;
-              }, SNAP_MS);
-            }));
+            void img.offsetWidth; // flush pending styles synchronously
+            img.style.transition = snapT;
+            img.style.transform  = 'translateX(0)';
+            setTimeout(() => {
+              img.style.transition = '';
+              img.style.transform  = '';
+              animating = false;
+            }, SNAP_MS);
           }, SNAP_MS);
         } else {
           // Spring back to center
