@@ -584,9 +584,7 @@
     .lb-prev { left: 1.25rem; }
     .lb-next { right: 1.25rem; }
     @media (max-width: 600px) {
-      .lb-arrow { width: 56px; height: 56px; font-size: 1.6rem; }
-      .lb-prev { left: 0.5rem; }
-      .lb-next { right: 0.5rem; }
+      .lb-arrow { display: none; }
     }
 
     .lb-counter {
@@ -742,7 +740,7 @@
     let photos = [];
     let currentPhotoIndex = 0;
     let slideInterval = null;
-    const PAGE_SIZE  = 20;
+    const PAGE_SIZE  = 21;
     let photoPage = 0;
     let mediaPage = 0;
     let currentSlide  = 0;
@@ -1111,6 +1109,125 @@
           if (diff > 0) document.getElementById('lb-next').click();
           else          document.getElementById('lb-prev').click();
         }
+      }, { passive: true });
+    })();
+
+    // ── Hero swipe (mobile — half-swipe drag preview + snap) ──
+    (function() {
+      const SNAP_MS   = 320;
+      const SNAP_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+      const THRESHOLD = 0.28; // commit if dragged ≥ 28% of hero width
+
+      const heroEl = document.getElementById('home');
+      let startX = 0, startY = 0;
+      let gesture = null; // 'h' | 'v' | null (uncommitted)
+      let adjIdx  = -1;   // index of the adjacent slide peeling in
+
+      function getSlides() { return document.querySelectorAll('.hero-slide'); }
+      function getDots()   { return document.querySelectorAll('.hero-dot'); }
+
+      function clearStyles(sls) { sls.forEach(s => { s.style.cssText = ''; }); }
+
+      function commitSlide(newIdx) {
+        const sls = getSlides();
+        // Pin old slide to invisible before clearing inline opacity so
+        // the CSS opacity transition never fires on it (no flash back to center)
+        sls[currentSlide].style.opacity = '0';
+        sls[currentSlide].classList.remove('active');
+        getDots()[currentSlide]?.classList.remove('active');
+        currentSlide = newIdx;
+        sls[currentSlide].classList.add('active');
+        getDots()[currentSlide]?.classList.add('active');
+        clearStyles(sls); // CSS classes now control opacity cleanly
+        clearInterval(slideInterval);
+        if (heroSlides.length > 1) slideInterval = setInterval(nextSlide, 4000);
+      }
+
+      heroEl.addEventListener('touchstart', (e) => {
+        if (heroSlides.length <= 1) return;
+        startX  = e.changedTouches[0].screenX;
+        startY  = e.changedTouches[0].screenY;
+        gesture = null;
+        adjIdx  = -1;
+        clearInterval(slideInterval);
+        // Freeze slides — kill CSS transitions and bake current opacity as inline
+        const sls = getSlides();
+        sls.forEach(s => {
+          s.style.transition = 'none';
+          s.style.opacity    = s.classList.contains('active') ? '1' : '0';
+        });
+      }, { passive: true });
+
+      heroEl.addEventListener('touchmove', (e) => {
+        if (heroSlides.length <= 1) return;
+        const dx = e.changedTouches[0].screenX - startX;
+        const dy = e.changedTouches[0].screenY - startY;
+        // Lock gesture direction once we can tell horizontal vs vertical
+        if (!gesture) {
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          gesture = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
+        }
+        if (gesture !== 'h') return;
+
+        const sls   = getSlides();
+        const total = sls.length;
+        const w     = heroEl.offsetWidth;
+
+        // Current slide follows the finger
+        sls[currentSlide].style.transform = `translateX(${dx}px)`;
+
+        // Peel the adjacent slide in from off-screen
+        const newAdj = dx < 0
+          ? (currentSlide + 1) % total
+          : (currentSlide - 1 + total) % total;
+
+        if (adjIdx >= 0 && adjIdx !== newAdj) {
+          // User reversed direction — hide the old adjacent
+          sls[adjIdx].style.opacity   = '0';
+          sls[adjIdx].style.transform = '';
+        }
+        adjIdx = newAdj;
+        sls[adjIdx].style.opacity   = '1';
+        sls[adjIdx].style.transform = `translateX(${(dx < 0 ? w : -w) + dx}px)`;
+      }, { passive: true });
+
+      heroEl.addEventListener('touchend', (e) => {
+        if (heroSlides.length <= 1 || gesture !== 'h') {
+          if (heroSlides.length > 1) slideInterval = setInterval(nextSlide, 4000);
+          gesture = null;
+          return;
+        }
+        gesture = null;
+
+        const dx   = e.changedTouches[0].screenX - startX;
+        const sls  = getSlides();
+        const w    = heroEl.offsetWidth;
+        const snapT = `transform ${SNAP_MS}ms ${SNAP_EASE}`;
+
+        if (Math.abs(dx) >= w * THRESHOLD && adjIdx >= 0) {
+          // ── Commit: finish the slide transition ───────────────
+          const newIdx = adjIdx;
+          sls[currentSlide].style.transition = snapT;
+          sls[currentSlide].style.transform  = `translateX(${dx < 0 ? -w : w}px)`;
+          sls[newIdx].style.transition = snapT;
+          sls[newIdx].style.transform  = 'translateX(0)';
+          setTimeout(() => commitSlide(newIdx), SNAP_MS);
+        } else {
+          // ── Spring back: not dragged far enough ───────────────
+          sls[currentSlide].style.transition = snapT;
+          sls[currentSlide].style.transform  = 'translateX(0)';
+          if (adjIdx >= 0) {
+            const fadeT = `transform ${SNAP_MS}ms ${SNAP_EASE}, opacity ${SNAP_MS}ms ${SNAP_EASE}`;
+            sls[adjIdx].style.transition = fadeT;
+            sls[adjIdx].style.transform  = `translateX(${dx < 0 ? w : -w}px)`;
+            sls[adjIdx].style.opacity    = '0';
+          }
+          setTimeout(() => {
+            clearStyles(sls);
+            slideInterval = setInterval(nextSlide, 4000);
+          }, SNAP_MS);
+        }
+        adjIdx = -1;
       }, { passive: true });
     })();
 
