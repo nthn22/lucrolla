@@ -40,9 +40,6 @@ const SESSION_TOKEN = crypto.randomBytes(32).toString('hex');
 app.use(cors());
 app.use(express.json());
 
-// Block direct /admin.html access — only reachable via the hidden route below
-app.get('/admin.html', (req, res) => res.status(404).end());
-
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Auth middleware ──────────────────────────────────────────
@@ -127,11 +124,6 @@ async function restoreConfigFromCloudinary() {
 }
 
 // ── Routes ───────────────────────────────────────────────────
-
-// Hidden admin panel route — URL kept out of GitHub via obscurity
-app.get('/manage', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
 
 // POST /auth — verify password, return session token
 app.post('/auth', (req, res) => {
