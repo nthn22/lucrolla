@@ -11,8 +11,6 @@ public/media/*
 !public/media/.gitkeep
 public/admin/*
 
-# Admin panel — keep local, don't expose on GitHub
-public/admin.html
 
 #misc
 .claude

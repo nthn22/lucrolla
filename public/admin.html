@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2:#242424;
+      --border:  #2e2e2e;
+      --text:    #e8e8e8;
+      --muted:   #888;
+      --accent:  #c8a97e;
+      --dim:     rgba(200,169,126,0.12);
+      --danger:  #e05c5c;
+      --success: #5cc87a;
+      --ease:    cubic-bezier(0.22,1,0.36,1);
+    }
+
+    body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:14px; min-height:100vh; }
+
+    /* ── Password overlay ──────────────────────────────────── */
+    #auth-overlay {
+      position:fixed; inset:0; background:var(--bg); z-index:999;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .auth-box {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:12px; padding:2.5rem 2rem; width:320px; text-align:center;
+    }
+    .auth-box h2 { font-size:1.1rem; font-weight:600; color:var(--accent); margin-bottom:.4rem; }
+    .auth-box p  { color:var(--muted); font-size:.8rem; margin-bottom:1.5rem; }
+    .auth-box input {
+      width:100%; padding:.75rem 1rem; background:var(--surface2);
+      border:1px solid var(--border); border-radius:8px; color:var(--text);
+      font-size:.95rem; text-align:center; letter-spacing:.1em; outline:none;
+      margin-bottom:1rem; transition:border-color .2s;
+    }
+    .auth-box input:focus { border-color:var(--accent); }
+    .auth-err { color:var(--danger); font-size:.78rem; min-height:1.2rem; margin-bottom:.75rem; }
+
+    /* ── Topbar ────────────────────────────────────────────── */
+    #topbar {
+      background:var(--surface); border-bottom:1px solid var(--border);
+      padding:0 2rem; height:56px; display:flex; align-items:center;
+      justify-content:space-between; position:sticky; top:0; z-index:10;
+    }
+    .topbar-brand { font-weight:600; font-size:.95rem; }
+    .topbar-brand span { color:var(--accent); }
+    .link-site { color:var(--muted); text-decoration:none; font-size:.8rem; letter-spacing:.03em; transition:color .2s; }
+    .link-site:hover { color:var(--text); }
+
+    /* ── Layout ────────────────────────────────────────────── */
+    #main { max-width:920px; margin:0 auto; padding:2.5rem 1.5rem; display:flex; flex-direction:column; gap:2rem; }
+
+    /* ── Cards ─────────────────────────────────────────────── */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.75rem; }
+    .card-title {
+      font-size:.68rem; font-weight:600; letter-spacing:.18em;
+      text-transform:uppercase; color:var(--muted); margin-bottom:1.25rem;
+    }
+
+    /* ── Forms ─────────────────────────────────────────────── */
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:.75rem; }
+    @media (max-width:560px) { .form-row { grid-template-columns:1fr; } }
+    .form-group { display:flex; flex-direction:column; gap:.35rem; }
+    .form-group label { font-size:.75rem; color:var(--muted); font-weight:500; }
+    .form-group input, .form-group textarea {
+      background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+      color:var(--text); padding:.6rem .85rem; font-size:.9rem;
+      font-family:'Inter',sans-serif; outline:none; resize:vertical; transition:border-color .2s;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color:var(--accent); }
+
+    /* ── Buttons ───────────────────────────────────────────── */
+    .btn {
+      display:inline-flex; align-items:center; gap:.4rem; border:none; border-radius:6px;
+      padding:.6rem 1.25rem; font-family:'Inter',sans-serif; font-size:.82rem; font-weight:500;
+      cursor:pointer; transition:opacity .2s, background .2s, transform .15s;
+    }
+    .btn:disabled { opacity:.4; cursor:not-allowed; }
+    .btn:active:not(:disabled) { transform:scale(.97); }
+    .btn-primary { background:var(--accent); color:#1a1410; }
+    .btn-primary:hover:not(:disabled) { opacity:.85; }
+    .btn-ghost { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { background:#2e2e2e; }
+
+    /* ── Drop zone ─────────────────────────────────────────── */
+    .drop-zone {
+      border:2px dashed var(--border); border-radius:8px; padding:1.5rem 1rem;
+      text-align:center; cursor:pointer; color:var(--muted); font-size:.82rem;
+      line-height:1.7; transition:border-color .2s, background .2s, color .2s; user-select:none;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color:var(--accent); background:var(--dim); color:var(--text); }
+    .drop-zone input[type="file"] { display:none; }
+
+    /* ── Progress bar ──────────────────────────────────────── */
+    .progress-wrap { height:3px; background:var(--border); border-radius:2px; margin-top:.75rem; display:none; }
+    .progress-wrap.visible { display:block; }
+    .progress-fill { height:100%; background:var(--accent); width:0; border-radius:2px; transition:width .3s; }
+
+    /* ── Admin grids ───────────────────────────────────────── */
+    .admin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-top:1.25rem; }
+    .admin-item { position:relative; aspect-ratio:4/5; border-radius:5px; overflow:hidden; background:var(--surface2); }
+    .admin-item.video-item { aspect-ratio:16/9; }
+    .admin-item img, .admin-item video { width:100%; height:100%; object-fit:cover; display:block; }
+    .admin-item .del-btn {
+      position:absolute; top:5px; right:5px; width:24px; height:24px;
+      background:rgba(10,8,6,.78); border:none; border-radius:50%;
+      color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; opacity:0; transition:opacity .2s; line-height:1;
+    }
+    .admin-item:hover .del-btn { opacity:1; }
+    .no-items { color:var(--muted); font-size:.82rem; margin-top:.75rem; }
+
+    /* ── Toast ─────────────────────────────────────────────── */
+    #toast {
+      position:fixed; bottom:1.75rem; left:50%;
+      transform:translateX(-50%) translateY(20px);
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; padding:.65rem 1.3rem; font-size:.82rem;
+      opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+      white-space:nowrap; z-index:50;
+    }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    #toast.ok   { border-color:var(--success); color:var(--success); }
+    #toast.err  { border-color:var(--danger);  color:var(--danger);  }
+  </style>
+</head>
+<body>
+
+  <!-- ── Password Gate ─────────────────────────────────────── -->
+  <div id="auth-overlay">
+    <div class="auth-box">
+      <h2>Admin Panel</h2>
+      <p>Enter password to continue</p>
+      <input type="password" id="pw-input" placeholder="Password" />
+      <p class="auth-err" id="pw-err"></p>
+      <button class="btn btn-primary" style="width:100%" id="pw-btn">Enter</button>
+    </div>
+  </div>
+
+  <!-- ── Topbar ────────────────────────────────────────────── -->
+  <header id="topbar">
+    <div class="topbar-brand">Admin <span>Panel</span></div>
+    <a href="/" target="_blank" class="link-site">← View Site</a>
+  </header>
+
+  <!-- ── Main ──────────────────────────────────────────────── -->
+  <main id="main">
+
+    <!-- 1. Site Settings -->
+    <div class="card">
+      <p class="card-title">Site Settings</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="input-name">Name</label>
+          <input id="input-name" type="text" placeholder="Photographer name" />
+        </div>
+        <div class="form-group">
+          <label for="input-ig">Instagram Handle</label>
+          <input id="input-ig" type="text" placeholder="handle (no @)" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:1.25rem">
+        <label for="input-tagline">Tagline</label>
+        <input id="input-tagline" type="text" placeholder="Short tagline under your name" />
+      </div>
+      <button class="btn btn-primary" id="btn-save-settings">Save Settings</button>
+    </div>
+
+    <!-- 2. Hero Carousel -->
+    <div class="card">
+      <p class="card-title">Hero Carousel</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:1rem">
+        Add multiple images — the site crossfades between them automatically.
+      </p>
+      <div class="admin-grid" id="hero-grid"></div>
+      <div class="drop-zone" id="hero-drop" style="margin-top:1.25rem">
+        <input type="file" id="hero-file" accept="image/*" multiple />
+        Drop images here or <u>click to browse</u><br />
+        <span style="font-size:.75rem;opacity:.6">Supports multiple files</span>
+      </div>
+      <div class="progress-wrap" id="hero-prog-wrap"><div class="progress-fill" id="hero-prog-fill"></div></div>
+    </div>
+
+    <!-- 3. About Section -->
+    <div class="card">
+      <p class="card-title">About Section</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:1rem">
+        Shown on the main site. Leave both blank to hide the section entirely.
+      </p>
+
+      <!-- About image (one only) -->
+      <div style="margin-bottom:1.5rem">
+        <p style="font-size:.75rem;color:var(--muted);font-weight:500;margin-bottom:.6rem">
+          Section Image <span style="opacity:.5;font-weight:400">(optional — one image)</span>
+        </p>
+        <div id="about-img-current" style="display:none;margin-bottom:.75rem">
+          <div class="admin-item" style="width:150px;aspect-ratio:3/2">
+            <img id="about-img-thumb" src="" alt="" />
+            <button class="del-btn" style="opacity:1" id="btn-del-about-img" title="Remove image">&#x2715;</button>
+          </div>
+        </div>
+        <div class="drop-zone" id="about-img-drop">
+          <input type="file" id="about-img-file" accept="image/*" />
+          Drop image or <u>click to browse</u>
+        </div>
+        <div class="progress-wrap" id="about-img-prog-wrap"><div class="progress-fill" id="about-img-prog-fill"></div></div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:1.25rem">
+        <label for="input-about">About Text</label>
+        <textarea id="input-about" rows="6" placeholder="Write something about yourself, your work, your approach..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="btn-save-about">Save About</button>
+    </div>
+
+    <!-- 4. Portfolio Gallery -->
+    <div class="card">
+      <p class="card-title">Portfolio Gallery</p>
+      <div class="drop-zone" id="photos-drop">
+        <input type="file" id="photos-file" accept="image/*" multiple />
+        Drop photos here or <u>click to browse</u><br />
+        <span style="font-size:.75rem;opacity:.6">jpg, png, gif, webp — multiple files supported</span>
+      </div>
+      <div class="progress-wrap" id="photos-prog-wrap"><div class="progress-fill" id="photos-prog-fill"></div></div>
+      <div class="admin-grid" id="photos-grid"></div>
+    </div>
+
+    <!-- 5. Media (Videos) -->
+    <div class="card">
+      <p class="card-title">Media — Videos</p>
+      <div class="drop-zone" id="media-drop">
+        <input type="file" id="media-file" accept="video/*,.mov,.mp4,.m4v,.mkv,.avi,.webm" multiple />
+        Drop videos here or <u>click to browse</u><br />
+        <span style="font-size:.75rem;opacity:.6">mp4, mov, avi, webm, mkv, m4v</span>
+      </div>
+      <div class="progress-wrap" id="media-prog-wrap"><div class="progress-fill" id="media-prog-fill"></div></div>
+      <div class="admin-grid" id="media-grid"></div>
+    </div>
+
+  </main>
+  <div id="toast"></div>
+
+  <script>
+    // ── Auth ─────────────────────────────────────────────────
+    // Password is verified server-side — it never appears in this source code
+    let sessionToken = '';
+
+    function getToken()    { return sessionToken; }
+    function authHeaders() { return { 'Authorization': 'Bearer ' + getToken() }; }
+
+    async function checkPassword() {
+      const password = document.getElementById('pw-input').value;
+      document.getElementById('pw-err').textContent = '';
+      try {
+        const res  = await fetch('/auth', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (data.success) {
+          sessionToken = data.token;
+          document.getElementById('auth-overlay').style.display = 'none';
+          loadAdminData();
+        } else {
+          document.getElementById('pw-err').textContent = 'Incorrect password.';
+          document.getElementById('pw-input').value = '';
+        }
+      } catch {
+        document.getElementById('pw-err').textContent = 'Server error — is the server running?';
+      }
+    }
+
+    document.getElementById('pw-btn').addEventListener('click', checkPassword);
+    document.getElementById('pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPassword(); });
+
+    // ── Toast ────────────────────────────────────────────────
+    let toastTimer;
+    function showToast(msg, type = 'ok') {
+      const t = document.getElementById('toast');
+      clearTimeout(toastTimer);
+      t.textContent = msg;
+      t.className   = `show ${type}`;
+      toastTimer = setTimeout(() => { t.className = ''; }, 3200);
+    }
+
+    // ── State ─────────────────────────────────────────────────
+    let config = {};
+
+    // ── Load data ─────────────────────────────────────────────
+    async function loadAdminData() {
+      try {
+        const res = await fetch('/config');
+        config    = await res.json();
+        document.getElementById('input-name').value    = config.name      || '';
+        document.getElementById('input-tagline').value = config.tagline   || '';
+        document.getElementById('input-ig').value      = config.instagram || '';
+        document.getElementById('input-about').value   = config.about     || '';
+        renderHeroGrid(config.heroImages   || []);
+        renderAboutImage(config.aboutImage || '');
+        renderPhotosGrid(config.photos     || []);
+        renderMediaGrid(config.media       || []);
+      } catch { showToast('Could not load data', 'err'); }
+    }
+
+    // ── Save settings ─────────────────────────────────────────
+    document.getElementById('btn-save-settings').addEventListener('click', async () => {
+      await postConfig({
+        name:      document.getElementById('input-name').value.trim(),
+        tagline:   document.getElementById('input-tagline').value.trim(),
+        instagram: document.getElementById('input-ig').value.trim().replace(/^@/, '')
+      }, 'Settings saved');
+    });
+
+    document.getElementById('btn-save-about').addEventListener('click', async () => {
+      await postConfig({ about: document.getElementById('input-about').value }, 'About saved');
+    });
+
+    async function postConfig(body, successMsg) {
+      try {
+        const res  = await fetch('/config', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body:    JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) { config = data.config; showToast(successMsg); }
+        else showToast('Save failed', 'err');
+      } catch { showToast('Error saving', 'err'); }
+    }
+
+    // ── Generic upload — one file per request ─────────────────
+    async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess) {
+      if (!files || !files.length) return;
+      let uploaded = 0;
+      let lastData = null;
+      for (const file of files) {
+        showProg(progKey, Math.round((uploaded / files.length) * 90) + 5);
+        const form = new FormData();
+        form.append(fieldName, file);
+        try {
+          const res  = await fetch(endpoint, { method: 'POST', headers: authHeaders(), body: form });
+          const data = await res.json();
+          if (data.success) { config = data.config; lastData = data; uploaded++; }
+          else { showToast(data.error || 'Upload failed', 'err'); break; }
+        } catch { showToast('Upload error', 'err'); break; }
+      }
+      if (uploaded > 0) {
+        showProg(progKey, 100);
+        onSuccess(lastData);
+        showToast(`${uploaded} file${uploaded > 1 ? 's' : ''} uploaded`);
+      }
+      setTimeout(() => hideProg(progKey), 600);
+    }
+
+    // ── Generic delete helper ─────────────────────────────────
+    async function deleteItem(route, src, resourceType) {
+      const url = `/${route}?src=` + encodeURIComponent(src);
+      const opts = { method: 'DELETE', headers: authHeaders() };
+      try {
+        const res  = await fetch(url, opts);
+        const data = await res.json();
+        if (data.success) { config = data.config; return data; }
+        showToast('Delete failed', 'err');
+      } catch { showToast('Delete error', 'err'); }
+    }
+
+    // ── Hero carousel ─────────────────────────────────────────
+    function renderHeroGrid(images) {
+      const grid = document.getElementById('hero-grid');
+      grid.innerHTML = '';
+      if (!images.length) { grid.innerHTML = '<p class="no-items">No hero images yet.</p>'; return; }
+      images.forEach(src => {
+        const item = makeAdminItem(src + '?t=' + Date.now(), false);
+        item.querySelector('.del-btn').addEventListener('click', async () => {
+          await deleteItem('hero', src);
+          renderHeroGrid(config.heroImages || []);
+          showToast('Removed from carousel');
+        });
+        grid.appendChild(item);
+      });
+    }
+
+    wireUpload('hero-drop', 'hero-file', true, files =>
+      uploadFiles('/upload?hero=true', 'photos', files, 'hero-prog',
+        data => renderHeroGrid(data.config.heroImages || []))
+    );
+
+    // ── About image ───────────────────────────────────────────
+    function renderAboutImage(src) {
+      const wrap  = document.getElementById('about-img-current');
+      const thumb = document.getElementById('about-img-thumb');
+      if (src) { thumb.src = src + '?t=' + Date.now(); wrap.style.display = 'block'; }
+      else { wrap.style.display = 'none'; }
+    }
+
+    document.getElementById('btn-del-about-img').addEventListener('click', async () => {
+      const src = config.aboutImage || '';
+      if (!src) return;
+      await deleteItem('photo', src);
+      renderAboutImage('');
+      showToast('Image removed');
+    });
+
+    wireUpload('about-img-drop', 'about-img-file', false, files =>
+      uploadFiles('/upload?about=true', 'photos', [files[0]], 'about-img-prog',
+        data => renderAboutImage(data.config.aboutImage || ''))
+    );
+
+    // ── Gallery photos ────────────────────────────────────────
+    function renderPhotosGrid(photos) {
+      const grid = document.getElementById('photos-grid');
+      grid.innerHTML = '';
+      if (!photos.length) { grid.innerHTML = '<p class="no-items">No photos yet.</p>'; return; }
+      photos.forEach(photo => {
+        const item = makeAdminItem(photo.src + '?t=' + Date.now(), false);
+        item.querySelector('.del-btn').addEventListener('click', async () => {
+          await deleteItem('photo', photo.src);
+          renderPhotosGrid(config.photos || []);
+          showToast('Photo deleted');
+        });
+        grid.appendChild(item);
+      });
+    }
+
+    wireUpload('photos-drop', 'photos-file', true, files =>
+      uploadFiles('/upload', 'photos', files, 'photos-prog',
+        data => renderPhotosGrid(data.config.photos || []))
+    );
+
+    // ── Media (videos) ────────────────────────────────────────
+    function renderMediaGrid(media) {
+      const grid = document.getElementById('media-grid');
+      grid.innerHTML = '';
+      if (!media.length) { grid.innerHTML = '<p class="no-items">No videos yet.</p>'; return; }
+      media.forEach(item => {
+        const div = makeAdminItem(item.src, true);
+        div.querySelector('.del-btn').addEventListener('click', async () => {
+          await deleteItem('media', item.src);
+          renderMediaGrid(config.media || []);
+          showToast('Video deleted');
+        });
+        grid.appendChild(div);
+      });
+    }
+
+    wireUpload('media-drop', 'media-file', true, files =>
+      uploadFiles('/upload/media', 'media', files, 'media-prog',
+        data => renderMediaGrid(data.config.media || []))
+    );
+
+    // ── DOM helpers ───────────────────────────────────────────
+    // Build an admin grid item with either an <img> or <video> and a delete button
+    function makeAdminItem(src, isVideo) {
+      const div = document.createElement('div');
+      div.className = 'admin-item' + (isVideo ? ' video-item' : '');
+      const media = document.createElement(isVideo ? 'video' : 'img');
+      media.src = src;
+      if (!isVideo) { media.alt = ''; media.loading = 'lazy'; }
+      else          { media.muted = true; media.preload = 'metadata'; }
+      const btn = document.createElement('button');
+      btn.className = 'del-btn'; btn.title = 'Delete'; btn.textContent = '×';
+      div.appendChild(media);
+      div.appendChild(btn);
+      return div;
+    }
+
+    // Wire drag-and-drop + click-to-browse for a drop zone
+    function wireUpload(zoneId, inputId, multiple, onFiles) {
+      const zone  = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+      if (multiple) input.setAttribute('multiple', '');
+      zone.addEventListener('click',     () => input.click());
+      zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault(); zone.classList.remove('dragover');
+        const files = Array.from(e.dataTransfer.files).filter(f =>
+          f.type.startsWith('image/') || f.type.startsWith('video/'));
+        if (files.length) await onFiles(files);
+      });
+      input.addEventListener('change', async e => {
+        const files = Array.from(e.target.files);
+        if (files.length) await onFiles(files);
+        e.target.value = '';
+      });
+    }
+
+    // ── Progress helpers ──────────────────────────────────────
+    function showProg(key, pct) {
+      document.getElementById(key + '-wrap').classList.add('visible');
+      document.getElementById(key + '-fill').style.width = pct + '%';
+    }
+    function hideProg(key) {
+      document.getElementById(key + '-wrap').classList.remove('visible');
+      document.getElementById(key + '-fill').style.width = '0%';
+    }
+  </script>
+</body>
+</html>
