@@ -185,6 +185,8 @@
 
     .nav-menu-link:hover { color: var(--accent); }
 
+    #nav-overlay.open .nav-menu-link:nth-child(5) { transition-delay: 0.32s; }
+
     /* Small Instagram link at the bottom of overlay */
     .nav-overlay-ig {
       position: absolute;
@@ -619,6 +621,33 @@
       animation: lbImgIn 0.3s var(--ease) both;
     }
 
+    /* ── Prints ─────────────────────────────────────────────── */
+    #prints {
+      text-align: center;
+    }
+    #prints .section-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .prints-coming-soon {
+      display: inline-block;
+      font-size: 0.68rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 0.45rem 1.1rem;
+      border-radius: 999px;
+    }
+    .prints-sub {
+      font-size: clamp(0.9rem, 1.8vw, 1rem);
+      color: var(--warm-gray);
+      max-width: 420px;
+      line-height: 1.7;
+    }
+
     /* ── Footer ─────────────────────────────────────────────── */
     footer {
       border-top: 1px solid var(--border);
@@ -650,6 +679,7 @@
     <a href="#about"   class="nav-menu-link" data-nav>About</a>
     <a href="#media"   class="nav-menu-link" data-nav>Media</a>
     <a href="#gallery" class="nav-menu-link" data-nav>Gallery</a>
+    <a href="#prints"  class="nav-menu-link" data-nav>Prints</a>
     <a href="#contact" class="nav-overlay-ig" id="nav-overlay-ig" data-nav>@lucrolla</a>
   </div>
 
@@ -706,6 +736,16 @@
       <h2 class="section-heading fade-up">Gallery</h2>
       <div class="photo-grid" id="photo-grid"></div>
       <div id="photo-pagination"></div>
+    </div>
+  </section>
+
+  <!-- ── Prints ───────────────────────────────────────────── -->
+  <section id="prints">
+    <div class="section-inner">
+      <p class="section-label">Prints</p>
+      <h2 class="section-heading fade-up">Own the Work</h2>
+      <span class="prints-coming-soon fade-up">Coming Soon</span>
+      <p class="prints-sub fade-up">Fine art prints of select works — available soon. Check back or follow on Instagram for updates.</p>
     </div>
   </section>
 
