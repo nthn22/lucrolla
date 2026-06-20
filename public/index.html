@@ -1287,9 +1287,7 @@
     })();
 
     // ── Image protection ──────────────────────────────────────
-    document.addEventListener('contextmenu', e => {
-      if (e.target.tagName === 'IMG' || e.target.tagName === 'VIDEO') e.preventDefault();
-    });
+    document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('keydown', e => {
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && ['s', 'u', 'p'].includes(e.key.toLowerCase())) e.preventDefault();
