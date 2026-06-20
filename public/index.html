@@ -676,9 +676,9 @@
   <!-- ── Full-screen Nav Overlay ───────────────────────────── -->
   <div id="nav-overlay" role="dialog" aria-modal="true" aria-label="Navigation menu">
     <a href="#home"    class="nav-menu-link" data-nav>Home</a>
-    <a href="#about"   class="nav-menu-link" data-nav>About</a>
-    <a href="#media"   class="nav-menu-link" data-nav>Media</a>
     <a href="#gallery" class="nav-menu-link" data-nav>Gallery</a>
+    <a href="#media"   class="nav-menu-link" data-nav>Media</a>
+    <a href="#about"   class="nav-menu-link" data-nav>About</a>
     <a href="#prints"  class="nav-menu-link" data-nav>Prints</a>
     <a href="#contact" class="nav-overlay-ig" id="nav-overlay-ig" data-nav>@lucrolla</a>
   </div>
@@ -707,15 +707,13 @@
     <div class="hero-dots" id="hero-dots" aria-label="Slide navigation"></div>
   </section>
 
-  <!-- ── About ─────────────────────────────────────────────── -->
-  <section id="about" style="display:none">
+  <!-- ── Gallery ───────────────────────────────────────────── -->
+  <section id="gallery">
     <div class="section-inner">
-      <div class="about-meta fade-up">
-        <p class="section-label">About</p>
-        <h2 class="section-heading">The Story</h2>
-        <img id="about-img" src="" alt="" class="about-img" style="display:none" />
-      </div>
-      <p class="about-body fade-up" id="about-text"></p>
+      <p class="section-label fade-up">Selected Work</p>
+      <h2 class="section-heading fade-up">Gallery</h2>
+      <div class="photo-grid" id="photo-grid"></div>
+      <div id="photo-pagination"></div>
     </div>
   </section>
 
@@ -729,13 +727,15 @@
     </div>
   </section>
 
-  <!-- ── Gallery ───────────────────────────────────────────── -->
-  <section id="gallery">
+  <!-- ── About ─────────────────────────────────────────────── -->
+  <section id="about" style="display:none">
     <div class="section-inner">
-      <p class="section-label fade-up">Selected Work</p>
-      <h2 class="section-heading fade-up">Gallery</h2>
-      <div class="photo-grid" id="photo-grid"></div>
-      <div id="photo-pagination"></div>
+      <div class="about-meta fade-up">
+        <p class="section-label">About</p>
+        <h2 class="section-heading">The Story</h2>
+        <img id="about-img" src="" alt="" class="about-img" style="display:none" />
+      </div>
+      <p class="about-body fade-up" id="about-text"></p>
     </div>
   </section>
 
