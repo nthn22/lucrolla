@@ -367,6 +367,18 @@
       line-height: 1.85;
       white-space: pre-line;
     }
+    .about-body a {
+      display: block;
+      margin-top: 1.6rem;
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+      transition: opacity 0.2s;
+    }
+    .about-body a:hover { opacity: 0.75; }
 
     .about-img {
       width: 100%;
@@ -817,7 +829,7 @@
         // About section — show if text OR image is set
         if ((data.about && data.about.trim()) || data.aboutImage) {
           document.getElementById('about').style.display = '';
-          if (data.about) document.getElementById('about-text').textContent = data.about;
+          if (data.about) document.getElementById('about-text').innerHTML = linkify(data.about);
           if (data.aboutImage) {
             const aImg = document.getElementById('about-img');
             aImg.src           = data.aboutImage;
@@ -1295,6 +1307,19 @@
     document.addEventListener('dragstart', e => {
       if (e.target.tagName === 'IMG') e.preventDefault();
     });
+
+    // ── Auto-link URLs in about text ──────────────────────────
+    function linkify(text) {
+      const escaped = text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return escaped.replace(
+        /((https?:\/\/)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+([/?#][^\s]*)?)/gi,
+        (match) => {
+          const href = /^https?:\/\//i.test(match) ? match : 'https://' + match;
+          return `<a href="${href}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+        }
+      );
+    }
 
     // ── Init ───────────────────────────────────────────────────
     loadSite();
