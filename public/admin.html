@@ -119,8 +119,33 @@
       color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;
       cursor:pointer; opacity:0; transition:opacity .2s; line-height:1;
     }
-    .admin-item:hover .del-btn { opacity:1; }
+    .admin-item .feat-btn {
+      position:absolute; top:5px; left:5px; width:24px; height:24px;
+      background:rgba(10,8,6,.78); border:none; border-radius:50%;
+      color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; opacity:0; transition:opacity .2s, color .2s; line-height:1;
+    }
+    .admin-item:hover .del-btn, .admin-item:hover .feat-btn { opacity:1; }
+    .admin-item .feat-btn.active { opacity:1; color:var(--accent); }
+    .admin-item .tag-badge {
+      position:absolute; bottom:5px; left:5px; max-width:calc(100% - 10px);
+      background:rgba(10,8,6,.78); color:var(--text); font-size:.68rem;
+      padding:.2rem .5rem; border-radius:4px; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis;
+    }
     .no-items { color:var(--muted); font-size:.82rem; margin-top:.75rem; }
+
+    /* ── Tag picker ────────────────────────────────────────── */
+    .tag-picker { display:flex; gap:.6rem; margin-bottom:1rem; }
+    .tag-picker select, .tag-picker input {
+      background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+      color:var(--text); padding:.6rem .85rem; font-size:.85rem;
+      font-family:'Inter',sans-serif; outline:none; transition:border-color .2s;
+    }
+    .tag-picker select:focus, .tag-picker input:focus { border-color:var(--accent); }
+    .tag-picker select { flex:1; }
+    .tag-picker input { flex:1; display:none; }
+    .tag-picker input.visible { display:block; }
 
     /* ── Toast ─────────────────────────────────────────────── */
     #toast {
@@ -228,6 +253,16 @@
     <!-- 4. Portfolio Gallery -->
     <div class="card">
       <p class="card-title">Portfolio Gallery</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:1rem">
+        Pick a tag (e.g. a trip or location) before uploading — every photo in this batch gets tagged with it.
+      </p>
+      <div class="tag-picker">
+        <select id="photos-tag-select">
+          <option value="">Select a tag…</option>
+          <option value="__new__">+ New tag…</option>
+        </select>
+        <input type="text" id="photos-tag-new" placeholder="New tag name" />
+      </div>
       <div class="drop-zone" id="photos-drop">
         <input type="file" id="photos-file" accept="image/*" multiple />
         Drop photos here or <u>click to browse</u><br />
@@ -310,9 +345,32 @@
         document.getElementById('input-about').value   = config.about     || '';
         renderHeroGrid(config.heroImages   || []);
         renderAboutImage(config.aboutImage || '');
+        renderTagSelect(config.tags        || []);
         renderPhotosGrid(config.photos     || []);
         renderMediaGrid(config.media       || []);
       } catch { showToast('Could not load data', 'err'); }
+    }
+
+    // ── Tag picker ────────────────────────────────────────────
+    function renderTagSelect(tags) {
+      const select = document.getElementById('photos-tag-select');
+      const prev   = select.value;
+      select.innerHTML = '<option value="">Select a tag…</option>' +
+        tags.map(t => `<option value="${t}">${t}</option>`).join('') +
+        '<option value="__new__">+ New tag…</option>';
+      if (tags.includes(prev)) select.value = prev;
+    }
+
+    const tagSelect = document.getElementById('photos-tag-select');
+    const tagNew    = document.getElementById('photos-tag-new');
+    tagSelect.addEventListener('change', () => {
+      tagNew.classList.toggle('visible', tagSelect.value === '__new__');
+      if (tagSelect.value === '__new__') tagNew.focus();
+    });
+
+    function getSelectedTag() {
+      if (tagSelect.value === '__new__') return tagNew.value.trim();
+      return tagSelect.value.trim();
     }
 
     // ── Save settings ─────────────────────────────────────────
@@ -342,7 +400,7 @@
     }
 
     // ── Generic upload — one file per request ─────────────────
-    async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess) {
+    async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess, extraFields = {}) {
       if (!files || !files.length) return;
       let uploaded = 0;
       let lastData = null;
@@ -350,6 +408,7 @@
         showProg(progKey, Math.round((uploaded / files.length) * 90) + 5);
         const form = new FormData();
         form.append(fieldName, file);
+        Object.entries(extraFields).forEach(([k, v]) => form.append(k, v));
         try {
           const res  = await fetch(endpoint, { method: 'POST', headers: authHeaders(), body: form });
           const data = await res.json();
@@ -425,20 +484,33 @@
       grid.innerHTML = '';
       if (!photos.length) { grid.innerHTML = '<p class="no-items">No photos yet.</p>'; return; }
       photos.forEach(photo => {
-        const item = makeAdminItem(photo.src + '?t=' + Date.now(), false);
+        const item = makeAdminItem(photo.src + '?t=' + Date.now(), false, { tag: photo.tag, featured: photo.featured, showFeatured: true });
         item.querySelector('.del-btn').addEventListener('click', async () => {
           await deleteItem('photo', photo.src);
           renderPhotosGrid(config.photos || []);
           showToast('Photo deleted');
         });
+        item.querySelector('.feat-btn').addEventListener('click', async () => {
+          const res  = await fetch('/photo/featured?src=' + encodeURIComponent(photo.src), {
+            method: 'POST', headers: authHeaders()
+          });
+          const data = await res.json();
+          if (data.success) { config = data.config; renderPhotosGrid(config.photos || []); }
+          else showToast('Update failed', 'err');
+        });
         grid.appendChild(item);
       });
     }
 
-    wireUpload('photos-drop', 'photos-file', true, files =>
-      uploadFiles('/upload', 'photos', files, 'photos-prog',
-        data => renderPhotosGrid(data.config.photos || []))
-    );
+    wireUpload('photos-drop', 'photos-file', true, files => {
+      const tag = getSelectedTag();
+      if (!tag) { showToast('Pick or enter a tag first', 'err'); return; }
+      return uploadFiles('/upload', 'photos', files, 'photos-prog',
+        data => {
+          renderTagSelect(data.config.tags || []);
+          renderPhotosGrid(data.config.photos || []);
+        }, { tag });
+    });
 
     // ── Media (videos) ────────────────────────────────────────
     function renderMediaGrid(media) {
@@ -462,17 +534,35 @@
     );
 
     // ── DOM helpers ───────────────────────────────────────────
-    // Build an admin grid item with either an <img> or <video> and a delete button
-    function makeAdminItem(src, isVideo) {
+    // Build an admin grid item with either an <img> or <video>, a delete button,
+    // and (for photos) a tag badge + featured toggle
+    function makeAdminItem(src, isVideo, opts = {}) {
+      const { tag, featured, showFeatured } = opts;
       const div = document.createElement('div');
       div.className = 'admin-item' + (isVideo ? ' video-item' : '');
       const media = document.createElement(isVideo ? 'video' : 'img');
       media.src = src;
       if (!isVideo) { media.alt = ''; media.loading = 'lazy'; }
       else          { media.muted = true; media.preload = 'metadata'; }
+      div.appendChild(media);
+
+      if (showFeatured) {
+        const featBtn = document.createElement('button');
+        featBtn.className = 'feat-btn' + (featured ? ' active' : '');
+        featBtn.title = featured ? 'Remove from Featured' : 'Mark as Featured';
+        featBtn.textContent = '★';
+        div.appendChild(featBtn);
+
+        if (tag) {
+          const badge = document.createElement('span');
+          badge.className = 'tag-badge';
+          badge.textContent = tag;
+          div.appendChild(badge);
+        }
+      }
+
       const btn = document.createElement('button');
       btn.className = 'del-btn'; btn.title = 'Delete'; btn.textContent = '×';
-      div.appendChild(media);
       div.appendChild(btn);
       return div;
     }

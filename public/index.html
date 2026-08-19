@@ -447,6 +447,40 @@
 
     .play-icon svg { width: 18px; height: 18px; margin-left: 2px; fill: #1a1a1a; }
 
+    /* ── Featured ───────────────────────────────────────────── */
+    #featured .photo-grid { grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 768px) {
+      #featured .photo-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ── Tag filter pills ───────────────────────────────────── */
+    .tag-filter {
+      display: flex;
+      gap: 0.6rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      margin-bottom: 2rem;
+      scrollbar-width: none;
+    }
+    .tag-filter::-webkit-scrollbar { display: none; }
+
+    .tag-pill {
+      flex: none;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--warm-gray);
+      padding: 0.45rem 1.1rem;
+      border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .tag-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .tag-pill.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 500; }
+
     /* ── Gallery (Photos) ───────────────────────────────────── */
     .photo-grid {
       display: grid;
@@ -723,11 +757,21 @@
     <div class="hero-dots" id="hero-dots" aria-label="Slide navigation"></div>
   </section>
 
+  <!-- ── Featured ──────────────────────────────────────────── -->
+  <section id="featured" style="display:none">
+    <div class="section-inner">
+      <p class="section-label fade-up">Curated</p>
+      <h2 class="section-heading fade-up">Featured</h2>
+      <div class="photo-grid" id="featured-grid"></div>
+    </div>
+  </section>
+
   <!-- ── Gallery ───────────────────────────────────────────── -->
   <section id="gallery">
     <div class="section-inner">
       <p class="section-label fade-up">Selected Work <span class="label-update">&middot; Updated Monthly</span></p>
       <h2 class="section-heading fade-up">Gallery</h2>
+      <div class="tag-filter" id="tag-filter"></div>
       <div class="photo-grid" id="photo-grid"></div>
       <div id="photo-pagination"></div>
     </div>
@@ -803,6 +847,8 @@
     let mediaPage = 0;
     let currentSlide  = 0;
     let heroSlides    = [];
+    let activeTag     = 'All';
+    let lightboxSource = []; // whichever photo list is currently open in the lightbox
 
     // ── Load config & populate everything ─────────────────────
     async function loadSite() {
@@ -847,8 +893,12 @@
           document.getElementById('media').style.display = '';
         }
 
+        // Featured
+        renderFeatured(data.photos || []);
+
         // Gallery
         photos = data.photos || [];
+        renderTagFilter(photos);
         renderGallery(photos);
 
         // Start scroll-reveal observer after DOM is ready
@@ -994,27 +1044,53 @@
       });
     }
 
+    // ── Tag filter ──────────────────────────────────────────────
+    function renderTagFilter(photosArr) {
+      const wrap = document.getElementById('tag-filter');
+      wrap.innerHTML = '';
+      const tags = [...new Set((photosArr || []).map(p => p.tag).filter(Boolean))];
+      if (tags.length === 0) return; // nothing to filter by yet
+
+      ['All', ...tags].forEach(tag => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-pill' + (tag === activeTag ? ' active' : '');
+        btn.textContent = tag;
+        btn.addEventListener('click', () => {
+          if (tag === activeTag) return;
+          activeTag = tag;
+          photoPage = 0;
+          renderTagFilter(photos);
+          renderGallery(photos);
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
     // ── Gallery (Photos) ───────────────────────────────────────
     function renderGallery(photosArr) {
       const grid = document.getElementById('photo-grid');
       grid.innerHTML = '';
 
-      if (!photosArr || photosArr.length === 0) {
+      const filtered = activeTag === 'All'
+        ? (photosArr || [])
+        : (photosArr || []).filter(p => p.tag === activeTag);
+
+      if (!filtered.length) {
         grid.innerHTML = '<p class="empty-state">No photos yet.</p>';
         document.getElementById('photo-pagination').innerHTML = '';
         return;
       }
 
-      const totalPages = Math.ceil(photosArr.length / PAGE_SIZE);
+      const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
       const start = photoPage * PAGE_SIZE;
-      const pagePhotos = photosArr.slice(start, start + PAGE_SIZE);
+      const pagePhotos = filtered.slice(start, start + PAGE_SIZE);
 
       pagePhotos.forEach((photo, i) => {
         const globalIndex = start + i;
         const item = document.createElement('div');
         item.className = 'photo-item fade-up';
         item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" draggable="false" />`;
-        item.addEventListener('click', () => openPhotoLightbox(globalIndex));
+        item.addEventListener('click', () => openPhotoLightbox(filtered, globalIndex));
         grid.appendChild(item);
       });
 
@@ -1027,8 +1103,30 @@
       initScrollReveal();
     }
 
+    // ── Featured ───────────────────────────────────────────────
+    function renderFeatured(photosArr) {
+      const featured = (photosArr || []).filter(p => p.featured);
+      const section  = document.getElementById('featured');
+      const grid      = document.getElementById('featured-grid');
+      grid.innerHTML = '';
+
+      if (!featured.length) { section.style.display = 'none'; return; }
+      section.style.display = '';
+
+      featured.forEach((photo, i) => {
+        const item = document.createElement('div');
+        item.className = 'photo-item fade-up';
+        item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" draggable="false" />`;
+        item.addEventListener('click', () => openPhotoLightbox(featured, i));
+        grid.appendChild(item);
+      });
+
+      initScrollReveal();
+    }
+
     // ── Photo Lightbox ─────────────────────────────────────────
-    function openPhotoLightbox(index) {
+    function openPhotoLightbox(source, index) {
+      lightboxSource = source;
       currentPhotoIndex = index;
       updatePhotoLightbox();
       document.getElementById('photo-lightbox').classList.add('active');
@@ -1037,9 +1135,9 @@
 
     function updatePhotoLightbox() {
       document.getElementById('lb-img').src =
-        photos[currentPhotoIndex].src;
+        lightboxSource[currentPhotoIndex].src;
       document.getElementById('lb-counter').textContent =
-        `${currentPhotoIndex + 1} / ${photos.length}`;
+        `${currentPhotoIndex + 1} / ${lightboxSource.length}`;
     }
 
     function closePhotoLightbox() {
@@ -1049,11 +1147,11 @@
 
     document.getElementById('lb-photo-close').addEventListener('click', closePhotoLightbox);
     document.getElementById('lb-prev').addEventListener('click', () => {
-      currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+      currentPhotoIndex = (currentPhotoIndex - 1 + lightboxSource.length) % lightboxSource.length;
       updatePhotoLightbox();
     });
     document.getElementById('lb-next').addEventListener('click', () => {
-      currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
+      currentPhotoIndex = (currentPhotoIndex + 1) % lightboxSource.length;
       updatePhotoLightbox();
     });
     document.getElementById('photo-lightbox').addEventListener('click', (e) => {
