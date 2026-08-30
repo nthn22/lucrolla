@@ -541,6 +541,13 @@
     }
     .tag-search-input::placeholder { color: var(--warm-gray); }
     .tag-search-input:focus { border-color: var(--accent); }
+    .tag-search-clear {
+      position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.75rem; padding: 0.2rem; line-height: 1;
+      transition: color 0.15s;
+    }
+    .tag-search-clear:hover { color: var(--accent); }
 
     .tag-autocomplete {
       position: absolute;
@@ -883,6 +890,7 @@
           <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
         <input type="text" class="tag-search-input" id="tag-search" placeholder="Search by tag…" autocomplete="off" />
+        <button class="tag-search-clear" id="tag-search-clear" aria-label="Clear search" style="display:none">&#x2715;</button>
         <div class="tag-autocomplete" id="tag-autocomplete"></div>
       </div>
       <div class="tag-filter" id="tag-filter"></div>
@@ -1245,7 +1253,23 @@
     function setupTagSearch() {
       const input    = document.getElementById('tag-search');
       const dropdown = document.getElementById('tag-autocomplete');
+      const clearBtn = document.getElementById('tag-search-clear');
       if (!input || !dropdown) return;
+
+      function updateClearBtn() {
+        clearBtn.style.display = input.value ? '' : 'none';
+      }
+
+      clearBtn.addEventListener('click', () => {
+        input.value = '';
+        activeTag = 'All';
+        photoPage = 0;
+        dropdown.classList.remove('open');
+        updateClearBtn();
+        renderTagFilter(photos);
+        renderGallery(photos);
+        input.focus();
+      });
 
       input.addEventListener('focus', () => {
         const q = input.value.trim().toLowerCase();
@@ -1259,6 +1283,7 @@
       });
 
       input.addEventListener('input', () => {
+        updateClearBtn();
         const q = input.value.trim().toLowerCase();
         if (!q) {
           if (suggestedTags.length) showTagSuggestions(suggestedTags, 'Suggested');
@@ -1318,6 +1343,7 @@
           activeTag = tag;
           photoPage = 0;
           document.getElementById('tag-search').value = tag;
+          updateClearBtn();
           dropdown.classList.remove('open');
           renderTagFilter(photos);
           renderGallery(photos);
