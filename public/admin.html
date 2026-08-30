@@ -109,8 +109,8 @@
     .progress-fill { height:100%; background:var(--accent); width:0; border-radius:2px; transition:width .3s; }
 
     /* ── Admin grids ───────────────────────────────────────── */
-    .admin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-top:1.25rem; }
-    .admin-item { position:relative; aspect-ratio:4/5; border-radius:5px; overflow:hidden; background:var(--surface2); }
+    .admin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:1.25rem; }
+    .admin-item { position:relative; aspect-ratio:4/5; border-radius:5px; overflow:hidden; background:var(--surface2); min-height:150px; }
     .admin-item.video-item { aspect-ratio:16/9; }
     .admin-item img, .admin-item video { width:100%; height:100%; object-fit:cover; display:block; }
     .admin-item .del-btn {
@@ -130,8 +130,8 @@
     .admin-item .tag-badge {
       position:absolute; bottom:5px; left:5px; max-width:calc(100% - 10px);
       background:rgba(10,8,6,.78); color:var(--text); font-size:.68rem;
-      padding:.2rem .5rem; border-radius:4px; white-space:nowrap;
-      overflow:hidden; text-overflow:ellipsis;
+      padding:.2rem .5rem; border-radius:4px; white-space:normal;
+      word-break:break-word; line-height:1.4;
     }
     .no-items { color:var(--muted); font-size:.82rem; margin-top:.75rem; }
 
@@ -803,10 +803,15 @@
             const input = document.createElement('input');
             input.value = photo.tag || '';
             input.placeholder = 'clear to remove';
-            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.68rem;width:100%;outline:none;padding:0;font-family:Inter,sans-serif;';
+            input.enterKeyHint = 'done';
+            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.68rem;width:calc(100% - 18px);outline:none;padding:0;font-family:Inter,sans-serif;';
+            const submitBtn = document.createElement('span');
+            submitBtn.textContent = '→';
+            submitBtn.style.cssText = 'cursor:pointer;color:var(--accent);font-size:.75rem;margin-left:.25rem;vertical-align:middle;line-height:1;';
             clearX.style.display = 'none';
             badgeText.textContent = '';
             badgeText.appendChild(input);
+            badgeText.appendChild(submitBtn);
             input.focus(); input.select();
 
             let enterPressed = false;
@@ -836,6 +841,8 @@
               } catch { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; showToast('Update failed', 'err'); }
             }
 
+            submitBtn.addEventListener('mousedown', (e) => { e.preventDefault(); saveTag(); });
+            submitBtn.addEventListener('touchend',  (e) => { e.preventDefault(); saveTag(); });
             input.addEventListener('keydown', (e) => {
               if (e.key === 'Enter') { e.preventDefault(); saveTag(); }
               if (e.key === 'Escape') { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; }
