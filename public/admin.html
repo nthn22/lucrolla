@@ -159,6 +159,55 @@
     #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     #toast.ok   { border-color:var(--success); color:var(--success); }
     #toast.err  { border-color:var(--danger);  color:var(--danger);  }
+
+    /* ── Suggested tags ────────────────────────────────────────── */
+    .suggested-tags-list { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; min-height:1.5rem; }
+    .suggested-tag-chip {
+      display:inline-flex; align-items:center; gap:.35rem;
+      background:var(--dim); border:1px solid rgba(200,169,126,.3);
+      color:var(--accent); font-size:.75rem; padding:.28rem .7rem;
+      border-radius:999px;
+    }
+    .suggested-tag-chip button {
+      background:none; border:none; color:inherit; cursor:pointer;
+      font-size:.9rem; line-height:1; opacity:.6; padding:0; font-family:inherit;
+    }
+    .suggested-tag-chip button:hover { opacity:1; }
+    .suggested-tag-add { display:flex; gap:.5rem; }
+    .suggested-tag-add input {
+      flex:1; background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; color:var(--text); padding:.55rem .85rem;
+      font-size:.85rem; font-family:'Inter',sans-serif; outline:none; transition:border-color .2s;
+    }
+    .suggested-tag-add input:focus { border-color:var(--accent); }
+
+    /* ── Admin gallery filter ──────────────────────────────────── */
+    .admin-filter-input {
+      width:100%; background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; color:var(--text); padding:.55rem .85rem;
+      font-size:.85rem; font-family:'Inter',sans-serif; outline:none;
+      transition:border-color .2s; margin-top:1.25rem; margin-bottom:.25rem;
+    }
+    .admin-filter-input::placeholder { color:var(--muted); }
+    .admin-filter-input:focus { border-color:var(--accent); }
+
+    /* ── Admin gallery pagination ──────────────────────────────── */
+    #photos-pagination { display:flex; justify-content:center; margin-top:1rem; }
+    .admin-pagination { display:flex; gap:.35rem; flex-wrap:wrap; justify-content:center; }
+    .admin-pg-btn {
+      background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+      width:32px; height:32px; border-radius:5px; font-size:.8rem;
+      font-family:'Inter',sans-serif; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .2s, color .2s, border-color .2s;
+    }
+    .admin-pg-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+    .admin-pg-btn.active { background:var(--accent); border-color:var(--accent); color:#1a1410; font-weight:600; }
+    .admin-pg-btn:disabled { opacity:.3; cursor:default; }
+
+    /* ── Tag badge inline edit ─────────────────────────────────── */
+    .admin-item .tag-badge { cursor:pointer; }
+    .admin-item .tag-badge:hover { background:rgba(200,169,126,.25); }
   </style>
 </head>
 <body>
@@ -253,8 +302,21 @@
     <!-- 4. Portfolio Gallery -->
     <div class="card">
       <p class="card-title">Portfolio Gallery</p>
-      <p style="color:var(--muted);font-size:.8rem;margin-bottom:1rem">
-        Pick a tag (e.g. a trip or location) before uploading — every photo in this batch gets tagged with it.
+
+      <!-- Suggested Tags -->
+      <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+        <p style="font-size:.75rem;font-weight:500;color:var(--muted);margin-bottom:.25rem">Suggested Tags</p>
+        <p style="font-size:.75rem;color:var(--muted);opacity:.6;margin-bottom:.75rem">Shown on the site when visitors open the search bar</p>
+        <div class="suggested-tags-list" id="suggested-tags-list"></div>
+        <div class="suggested-tag-add">
+          <input type="text" id="suggested-tag-input" placeholder="Add a suggested tag…" />
+          <button class="btn btn-ghost" id="btn-add-suggested">Add</button>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:.75rem">
+        Pick a tag before uploading — every photo in this batch gets that tag.
       </p>
       <div class="tag-picker">
         <select id="photos-tag-select">
@@ -269,7 +331,11 @@
         <span style="font-size:.75rem;opacity:.6">jpg, png, gif, webp — multiple files supported</span>
       </div>
       <div class="progress-wrap" id="photos-prog-wrap"><div class="progress-fill" id="photos-prog-fill"></div></div>
+
+      <!-- Filter + Grid -->
+      <input type="text" class="admin-filter-input" id="admin-photos-search" placeholder="Filter by tag…" />
       <div class="admin-grid" id="photos-grid"></div>
+      <div id="photos-pagination"></div>
     </div>
 
     <!-- 5. Media (Videos) -->
@@ -332,7 +398,10 @@
     }
 
     // ── State ─────────────────────────────────────────────────
-    let config = {};
+    let config         = {};
+    let adminPhotoPage = 0;
+    let adminPhotoFilter = '';
+    const ADMIN_PAGE_SIZE = 21;
 
     // ── Load data ─────────────────────────────────────────────
     async function loadAdminData() {
@@ -346,6 +415,7 @@
         renderHeroGrid(config.heroImages   || []);
         renderAboutImage(config.aboutImage || '');
         renderTagSelect(config.tags        || []);
+        renderSuggestedTags(config.suggestedTags || []);
         renderPhotosGrid(config.photos     || []);
         renderMediaGrid(config.media       || []);
       } catch { showToast('Could not load data', 'err'); }
@@ -482,11 +552,29 @@
     function renderPhotosGrid(photos) {
       const grid = document.getElementById('photos-grid');
       grid.innerHTML = '';
-      if (!photos.length) { grid.innerHTML = '<p class="no-items">No photos yet.</p>'; return; }
-      photos.forEach(photo => {
-        const item = makeAdminItem(photo.src + '?t=' + Date.now(), false, { tag: photo.tag, featured: photo.featured, showFeatured: true });
+
+      const filtered = adminPhotoFilter
+        ? photos.filter(p => (p.tag || '').toLowerCase().includes(adminPhotoFilter))
+        : photos;
+
+      if (!filtered.length) {
+        grid.innerHTML = adminPhotoFilter
+          ? `<p class="no-items">No photos match "${adminPhotoFilter}".</p>`
+          : '<p class="no-items">No photos yet.</p>';
+        document.getElementById('photos-pagination').innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE);
+      if (adminPhotoPage >= totalPages) adminPhotoPage = Math.max(0, totalPages - 1);
+      const start     = adminPhotoPage * ADMIN_PAGE_SIZE;
+      const pageItems = filtered.slice(start, start + ADMIN_PAGE_SIZE);
+
+      pageItems.forEach(photo => {
+        const item = makeAdminItem(photo.src + '?t=' + Date.now(), false, { photo, showFeatured: true });
         item.querySelector('.del-btn').addEventListener('click', async () => {
           await deleteItem('photo', photo.src);
+          adminPhotoPage = 0;
           renderPhotosGrid(config.photos || []);
           showToast('Photo deleted');
         });
@@ -500,6 +588,42 @@
         });
         grid.appendChild(item);
       });
+
+      renderAdminPagination(adminPhotoPage, totalPages, (page) => {
+        adminPhotoPage = page;
+        renderPhotosGrid(config.photos || []);
+        document.getElementById('photos-grid').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+
+    function renderAdminPagination(currentPage, totalPages, onPageChange) {
+      const container = document.getElementById('photos-pagination');
+      container.innerHTML = '';
+      if (totalPages <= 1) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'admin-pagination';
+
+      const prev = document.createElement('button');
+      prev.className = 'admin-pg-btn'; prev.textContent = '←';
+      prev.disabled = currentPage === 0;
+      prev.addEventListener('click', () => onPageChange(currentPage - 1));
+      wrap.appendChild(prev);
+
+      for (let i = 0; i < totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'admin-pg-btn' + (i === currentPage ? ' active' : '');
+        btn.textContent = i + 1;
+        btn.addEventListener('click', () => onPageChange(i));
+        wrap.appendChild(btn);
+      }
+
+      const next = document.createElement('button');
+      next.className = 'admin-pg-btn'; next.textContent = '→';
+      next.disabled = currentPage === totalPages - 1;
+      next.addEventListener('click', () => onPageChange(currentPage + 1));
+      wrap.appendChild(next);
+
+      container.appendChild(wrap);
     }
 
     wireUpload('photos-drop', 'photos-file', true, files => {
@@ -534,10 +658,11 @@
     );
 
     // ── DOM helpers ───────────────────────────────────────────
-    // Build an admin grid item with either an <img> or <video>, a delete button,
-    // and (for photos) a tag badge + featured toggle
     function makeAdminItem(src, isVideo, opts = {}) {
-      const { tag, featured, showFeatured } = opts;
+      const { photo, tag: tagOpt, featured: featuredOpt, showFeatured } = opts;
+      const tag      = photo ? photo.tag      : tagOpt;
+      const featured = photo ? photo.featured : featuredOpt;
+
       const div = document.createElement('div');
       div.className = 'admin-item' + (isVideo ? ' video-item' : '');
       const media = document.createElement(isVideo ? 'video' : 'img');
@@ -553,12 +678,60 @@
         featBtn.textContent = '★';
         div.appendChild(featBtn);
 
-        if (tag) {
-          const badge = document.createElement('span');
-          badge.className = 'tag-badge';
-          badge.textContent = tag;
-          div.appendChild(badge);
+        // Tag badge — click to inline-edit
+        const badge = document.createElement('span');
+        badge.className = 'tag-badge';
+        badge.textContent = tag || '—';
+        badge.title = 'Click to edit tag';
+
+        if (photo) {
+          badge.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (badge.querySelector('input')) return; // already editing
+            const input = document.createElement('input');
+            input.value = photo.tag || '';
+            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.68rem;width:100%;outline:none;padding:0;font-family:Inter,sans-serif;';
+            badge.textContent = '';
+            badge.appendChild(input);
+            input.focus(); input.select();
+
+            let enterPressed = false;
+
+            async function saveTag() {
+              enterPressed = true;
+              const newTag = input.value.trim();
+              if (!newTag || newTag === photo.tag) { badge.textContent = photo.tag || '—'; return; }
+              badge.textContent = newTag; // optimistic update
+              try {
+                const res  = await fetch('/photo/tag?src=' + encodeURIComponent(photo.src), {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                  body: JSON.stringify({ tag: newTag })
+                });
+                const data = await res.json();
+                if (data.success) {
+                  config = data.config;
+                  renderTagSelect(data.config.tags || []);
+                  renderPhotosGrid(data.config.photos || []);
+                  showToast('Tag updated');
+                } else {
+                  badge.textContent = photo.tag || '—';
+                  showToast(data.error || 'Update failed', 'err');
+                }
+              } catch { badge.textContent = photo.tag || '—'; showToast('Update failed', 'err'); }
+            }
+
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') { e.preventDefault(); saveTag(); }
+              if (e.key === 'Escape') { badge.textContent = photo.tag || '—'; }
+            });
+            input.addEventListener('blur', () => {
+              if (!enterPressed) badge.textContent = photo.tag || '—';
+            });
+          });
         }
+
+        div.appendChild(badge);
       }
 
       const btn = document.createElement('button');
@@ -587,6 +760,57 @@
         e.target.value = '';
       });
     }
+
+    // ── Suggested tags ────────────────────────────────────────
+    function renderSuggestedTags(tags) {
+      const list = document.getElementById('suggested-tags-list');
+      list.innerHTML = '';
+      if (!tags.length) {
+        list.innerHTML = '<span style="color:var(--muted);font-size:.78rem">None yet.</span>';
+        return;
+      }
+      tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'suggested-tag-chip';
+        const label = document.createTextNode(tag + ' ');
+        const rm    = document.createElement('button');
+        rm.textContent = '×'; rm.title = 'Remove';
+        rm.addEventListener('click', () => removeSuggestedTag(tag));
+        chip.appendChild(label); chip.appendChild(rm);
+        list.appendChild(chip);
+      });
+    }
+
+    async function addSuggestedTag() {
+      const input  = document.getElementById('suggested-tag-input');
+      const tag    = input.value.trim();
+      if (!tag) return;
+      const current = config.suggestedTags || [];
+      if (current.some(t => t.toLowerCase() === tag.toLowerCase())) {
+        showToast('Already in suggested tags', 'err'); return;
+      }
+      await postConfig({ suggestedTags: [...current, tag] }, 'Suggested tag added');
+      renderSuggestedTags(config.suggestedTags || []);
+      input.value = '';
+    }
+
+    async function removeSuggestedTag(tag) {
+      const current = config.suggestedTags || [];
+      await postConfig({ suggestedTags: current.filter(t => t !== tag) }, 'Suggested tag removed');
+      renderSuggestedTags(config.suggestedTags || []);
+    }
+
+    document.getElementById('btn-add-suggested').addEventListener('click', addSuggestedTag);
+    document.getElementById('suggested-tag-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addSuggestedTag();
+    });
+
+    // ── Admin photo filter ────────────────────────────────────
+    document.getElementById('admin-photos-search').addEventListener('input', (e) => {
+      adminPhotoFilter = e.target.value.trim().toLowerCase();
+      adminPhotoPage   = 0;
+      renderPhotosGrid(config.photos || []);
+    });
 
     // ── Progress helpers ──────────────────────────────────────
     function showProg(key, pct) {

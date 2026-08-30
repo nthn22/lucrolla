@@ -114,7 +114,7 @@ async function restoreConfigFromCloudinary() {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify({
           name: 'Lucrolla', tagline: '', instagram: '',
           heroImages: [], heroImage: '', aboutImage: '', about: '',
-          photos: [], media: [], tags: []
+          photos: [], media: [], tags: [], suggestedTags: []
         }, null, 2));
       }
     } else {
@@ -139,9 +139,10 @@ app.get('/config', (req, res) => {
   try {
     const data = readConfig();
     if (!data.heroImages || !data.heroImages.length) data.heroImages = data.heroImage ? [data.heroImage] : [];
-    if (data.about  === undefined) data.about  = '';
-    if (!data.media)               data.media  = [];
-    if (!data.tags)                data.tags   = [];
+    if (data.about         === undefined) data.about         = '';
+    if (!data.media)                      data.media         = [];
+    if (!data.tags)                       data.tags          = [];
+    if (!data.suggestedTags)              data.suggestedTags = [];
     res.json(publicConfig(data));
   } catch (err) {
     res.status(500).json({ error: 'Could not read config' });
@@ -243,6 +244,28 @@ app.delete('/photo', requireAuth, async (req, res) => {
     res.json({ success: true, config: publicConfig(config) });
   } catch (err) {
     res.status(500).json({ error: 'Delete failed: ' + err.message });
+  }
+});
+
+// PATCH /photo/tag?src=<url> — update the tag on an existing gallery photo
+app.patch('/photo/tag', requireAuth, (req, res) => {
+  try {
+    const src  = req.query.src;
+    const tag  = (req.body.tag || '').trim();
+    if (!tag) return res.status(400).json({ error: 'Tag is required' });
+
+    const config = readConfig();
+    const item   = config.photos.find(p => p.src === src);
+    if (!item) return res.status(404).json({ error: 'Photo not found' });
+
+    item.tag = tag;
+    if (!config.tags) config.tags = [];
+    if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
+
+    writeConfig(config);
+    res.json({ success: true, config: publicConfig(config) });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed: ' + err.message });
   }
 });
 

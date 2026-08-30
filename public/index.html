@@ -481,6 +481,62 @@
     .tag-pill:hover { border-color: var(--accent); color: var(--accent); }
     .tag-pill.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 500; }
 
+    /* ── Tag search bar ─────────────────────────────────────── */
+    .tag-search-wrap {
+      position: relative;
+      margin-bottom: 1.25rem;
+      max-width: 380px;
+    }
+    .tag-search-icon {
+      position: absolute;
+      left: 0.8rem; top: 50%; transform: translateY(-50%);
+      width: 14px; height: 14px;
+      color: var(--warm-gray);
+      pointer-events: none;
+    }
+    .tag-search-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--warm-black);
+      padding: 0.6rem 1rem 0.6rem 2.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .tag-search-input::placeholder { color: var(--warm-gray); }
+    .tag-search-input:focus { border-color: var(--accent); }
+
+    .tag-autocomplete {
+      position: absolute;
+      top: calc(100% + 6px); left: 0; right: 0;
+      background: #252220;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      z-index: 20;
+      display: none;
+    }
+    .tag-autocomplete.open { display: block; }
+    .tag-ac-label {
+      padding: 0.5rem 1rem 0.2rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--warm-gray);
+      opacity: 0.65;
+    }
+    .tag-ac-item {
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--warm-gray);
+      transition: background 0.15s, color 0.15s;
+    }
+    .tag-ac-item:hover { background: rgba(200,169,126,0.1); color: var(--warm-black); }
+
     /* ── Gallery (Photos) ───────────────────────────────────── */
     .photo-grid {
       display: grid;
@@ -771,6 +827,14 @@
     <div class="section-inner">
       <p class="section-label fade-up">Selected Work <span class="label-update">&middot; Updated Monthly</span></p>
       <h2 class="section-heading fade-up">Gallery</h2>
+      <div class="tag-search-wrap fade-up" id="tag-search-wrap" style="display:none">
+        <svg class="tag-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <input type="text" class="tag-search-input" id="tag-search" placeholder="Search by tag…" autocomplete="off" />
+        <div class="tag-autocomplete" id="tag-autocomplete"></div>
+      </div>
       <div class="tag-filter" id="tag-filter"></div>
       <div class="photo-grid" id="photo-grid"></div>
       <div id="photo-pagination"></div>
@@ -847,7 +911,9 @@
     let mediaPage = 0;
     let currentSlide  = 0;
     let heroSlides    = [];
-    let activeTag     = 'All';
+    let activeTag      = 'All';
+    let allTags        = [];
+    let suggestedTags  = [];
     let lightboxSource = []; // whichever photo list is currently open in the lightbox
 
     // ── Load config & populate everything ─────────────────────
@@ -897,8 +963,11 @@
         renderFeatured(data.photos || []);
 
         // Gallery
-        photos = data.photos || [];
+        photos        = data.photos        || [];
+        allTags       = data.tags          || [];
+        suggestedTags = data.suggestedTags || [];
         renderTagFilter(photos);
+        setupTagSearch();
         renderGallery(photos);
 
         // Start scroll-reveal observer after DOM is ready
@@ -1049,8 +1118,14 @@
       const wrap = document.getElementById('tag-filter');
       wrap.innerHTML = '';
       const tags = [...new Set((photosArr || []).map(p => p.tag).filter(Boolean))];
-      if (tags.length === 0) return; // nothing to filter by yet
 
+      // Show search box when there's anything to search or suggest
+      const searchWrap = document.getElementById('tag-search-wrap');
+      if (tags.length > 0 || allTags.length > 0 || suggestedTags.length > 0) {
+        searchWrap.style.display = '';
+      }
+
+      if (tags.length === 0) return;
       ['All', ...tags].forEach(tag => {
         const btn = document.createElement('button');
         btn.className = 'tag-pill' + (tag === activeTag ? ' active' : '');
@@ -1059,11 +1134,96 @@
           if (tag === activeTag) return;
           activeTag = tag;
           photoPage = 0;
+          const si = document.getElementById('tag-search');
+          if (si) si.value = tag === 'All' ? '' : tag;
           renderTagFilter(photos);
           renderGallery(photos);
         });
         wrap.appendChild(btn);
       });
+    }
+
+    function setupTagSearch() {
+      const input    = document.getElementById('tag-search');
+      const dropdown = document.getElementById('tag-autocomplete');
+      if (!input || !dropdown) return;
+
+      input.addEventListener('focus', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q && suggestedTags.length) showTagSuggestions(suggestedTags, 'Suggested');
+        else if (q) {
+          const matches = allTags.filter(t => t.toLowerCase().includes(q));
+          if (matches.length) showTagSuggestions(matches);
+        }
+      });
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q) {
+          if (suggestedTags.length) showTagSuggestions(suggestedTags, 'Suggested');
+          else dropdown.classList.remove('open');
+          return;
+        }
+        const matches = allTags.filter(t => t.toLowerCase().includes(q));
+        if (matches.length) showTagSuggestions(matches);
+        else dropdown.classList.remove('open');
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const q = input.value.trim();
+          if (q) {
+            activeTag = q;
+            photoPage = 0;
+            dropdown.classList.remove('open');
+            renderTagFilter(photos);
+            renderGallery(photos);
+          } else {
+            activeTag = 'All';
+            photoPage = 0;
+            dropdown.classList.remove('open');
+            renderTagFilter(photos);
+            renderGallery(photos);
+          }
+        }
+        if (e.key === 'Escape') {
+          dropdown.classList.remove('open');
+          input.blur();
+        }
+      });
+
+      // Close dropdown when clicking outside the search wrap
+      document.addEventListener('click', (e) => {
+        const wrap = document.getElementById('tag-search-wrap');
+        if (wrap && !wrap.contains(e.target)) dropdown.classList.remove('open');
+      });
+    }
+
+    function showTagSuggestions(tags, label) {
+      const dropdown = document.getElementById('tag-autocomplete');
+      dropdown.innerHTML = '';
+      if (label) {
+        const lbl = document.createElement('div');
+        lbl.className = 'tag-ac-label';
+        lbl.textContent = label;
+        dropdown.appendChild(lbl);
+      }
+      tags.forEach(tag => {
+        const item = document.createElement('div');
+        item.className = 'tag-ac-item';
+        item.textContent = tag;
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault(); // prevent blur before click registers
+          activeTag = tag;
+          photoPage = 0;
+          document.getElementById('tag-search').value = tag;
+          dropdown.classList.remove('open');
+          renderTagFilter(photos);
+          renderGallery(photos);
+        });
+        dropdown.appendChild(item);
+      });
+      dropdown.classList.add('open');
     }
 
     // ── Gallery (Photos) ───────────────────────────────────────
