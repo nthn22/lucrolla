@@ -205,16 +205,9 @@
     .admin-pg-btn.active { background:var(--accent); border-color:var(--accent); color:#1a1410; font-weight:600; }
     .admin-pg-btn:disabled { opacity:.3; cursor:default; }
 
-    /* ── Tag / year badge inline edit ─────────────────────────── */
-    .admin-item .tag-badge  { cursor:pointer; max-width:calc(65% - 10px); }
-    .admin-item .tag-badge:hover  { background:rgba(200,169,126,.25); }
-    .admin-item .year-badge {
-      position:absolute; bottom:5px; right:5px;
-      background:rgba(10,8,6,.78); color:var(--accent); font-size:.62rem;
-      padding:.15rem .4rem; border-radius:4px; cursor:pointer;
-      white-space:nowrap;
-    }
-    .admin-item .year-badge:hover { background:rgba(200,169,126,.25); }
+    /* ── Tag badge inline edit ─────────────────────────────────── */
+    .admin-item .tag-badge { cursor:pointer; }
+    .admin-item .tag-badge:hover { background:rgba(200,169,126,.25); }
   </style>
 </head>
 <body>
@@ -743,61 +736,6 @@
         }
 
         div.appendChild(badge);
-
-        // Year badge — click to inline-edit
-        if (photo) {
-          const yearBadge = document.createElement('span');
-          yearBadge.className = 'year-badge';
-          yearBadge.textContent = photo.year || '—';
-          yearBadge.title = 'Click to edit year';
-
-          yearBadge.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (yearBadge.querySelector('input')) return;
-            const input = document.createElement('input');
-            input.type = 'number'; input.min = '2000'; input.max = '2099';
-            input.value = photo.year || '';
-            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--accent);font-size:.62rem;width:38px;outline:none;padding:0;font-family:Inter,sans-serif;';
-            yearBadge.textContent = '';
-            yearBadge.appendChild(input);
-            input.focus(); input.select();
-
-            let enterPressed = false;
-
-            async function saveYear() {
-              enterPressed = true;
-              const newYear = input.value.trim();
-              if (!newYear || newYear === photo.year) { yearBadge.textContent = photo.year || '—'; return; }
-              yearBadge.textContent = newYear;
-              try {
-                const res  = await fetch('/photo/year?src=' + encodeURIComponent(photo.src), {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                  body: JSON.stringify({ year: newYear })
-                });
-                const data = await res.json();
-                if (data.success) {
-                  config = data.config;
-                  renderPhotosGrid(data.config.photos || []);
-                  showToast('Year updated');
-                } else {
-                  yearBadge.textContent = photo.year || '—';
-                  showToast(data.error || 'Update failed', 'err');
-                }
-              } catch { yearBadge.textContent = photo.year || '—'; showToast('Update failed', 'err'); }
-            }
-
-            input.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter') { e.preventDefault(); saveYear(); }
-              if (e.key === 'Escape') { yearBadge.textContent = photo.year || '—'; }
-            });
-            input.addEventListener('blur', () => {
-              if (!enterPressed) yearBadge.textContent = photo.year || '—';
-            });
-          });
-
-          div.appendChild(yearBadge);
-        }
       }
 
       const btn = document.createElement('button');

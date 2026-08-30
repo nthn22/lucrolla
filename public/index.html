@@ -738,6 +738,17 @@
       letter-spacing: 0.14em;
     }
 
+    .lb-detail {
+      position: fixed;
+      bottom: 3.2rem; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.55);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
     /* ── Video Lightbox ─────────────────────────────────────── */
     #video-lightbox {
       display: none;
@@ -931,6 +942,7 @@
       <img id="lb-img" src="" alt="" />
     </div>
     <button class="lb-arrow lb-next" id="lb-next" aria-label="Next">&#8594;</button>
+    <div class="lb-detail" id="lb-detail"></div>
     <div class="lb-counter" id="lb-counter"></div>
   </div>
 
@@ -1374,10 +1386,12 @@
     }
 
     function updatePhotoLightbox() {
-      document.getElementById('lb-img').src =
-        lightboxSource[currentPhotoIndex].src;
+      const photo = lightboxSource[currentPhotoIndex];
+      document.getElementById('lb-img').src = photo.src;
       document.getElementById('lb-counter').textContent =
         `${currentPhotoIndex + 1} / ${lightboxSource.length}`;
+      const parts = [photo.tag, photo.year].filter(Boolean);
+      document.getElementById('lb-detail').textContent = parts.join(' · ');
     }
 
     function closePhotoLightbox() {
