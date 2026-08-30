@@ -1184,6 +1184,11 @@
       const pillTags = suggestedTags.filter(t => photoTagSet.has(t));
       if (pillTags.length === 0) return;
 
+      const label = document.createElement('span');
+      label.textContent = 'Suggested';
+      label.style.cssText = 'flex:none;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);opacity:.6;align-self:center;padding-right:.2rem;white-space:nowrap;';
+      wrap.appendChild(label);
+
       ['All', ...pillTags].forEach(tag => {
         const btn = document.createElement('button');
         btn.className = 'tag-pill' + (tag === activeTag ? ' active' : '');
