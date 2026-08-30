@@ -1207,6 +1207,7 @@
           photoPage = 0;
           const si = document.getElementById('tag-search');
           if (si) si.value = tag === 'All' ? '' : tag;
+          updateClearBtn();
           renderTagFilter(photos);
           renderGallery(photos);
         });
@@ -1250,15 +1251,17 @@
       });
     });
 
+    function updateClearBtn() {
+      const btn   = document.getElementById('tag-search-clear');
+      const input = document.getElementById('tag-search');
+      if (btn && input) btn.style.display = input.value ? '' : 'none';
+    }
+
     function setupTagSearch() {
       const input    = document.getElementById('tag-search');
       const dropdown = document.getElementById('tag-autocomplete');
       const clearBtn = document.getElementById('tag-search-clear');
       if (!input || !dropdown) return;
-
-      function updateClearBtn() {
-        clearBtn.style.display = input.value ? '' : 'none';
-      }
 
       clearBtn.addEventListener('click', () => {
         input.value = '';
