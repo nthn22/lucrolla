@@ -480,9 +480,6 @@
     }
     .tag-pill:hover { border-color: var(--accent); color: var(--accent); }
     .tag-pill.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 500; }
-    .tag-pill.tag-pill-more {
-      border-style: dashed; color: var(--muted); pointer-events: none; opacity: 0.7;
-    }
 
     /* ── Gallery header (heading + sort toggle) ─────────────── */
     .gallery-header {
@@ -971,8 +968,6 @@
     let photoSort      = 'newest';
     let allTags        = [];
     let suggestedTags  = [];
-    let overflowTags   = []; // tags not shown as pills (used by search dropdown)
-    const MAX_TAG_PILLS = 8;
     let lightboxSource = []; // whichever photo list is currently open in the lightbox
 
     // ── Load config & populate everything ─────────────────────
@@ -1178,23 +1173,18 @@
       const wrap = document.getElementById('tag-filter');
       wrap.innerHTML = '';
 
-      // Collect unique tags from photos.tags arrays
-      const tagSet = new Set();
-      (photosArr || []).forEach(p => (p.tags || []).forEach(t => { if (t) tagSet.add(t); }));
-      const tags = [...tagSet];
+      // Pills = suggestedTags (admin-curated), filtered to only ones with actual photos
+      const photoTagSet = new Set();
+      (photosArr || []).forEach(p => (p.tags || []).forEach(t => { if (t) photoTagSet.add(t); }));
 
-      // Show search box when there's anything to search or suggest
+      // Show search box when there's anything to search
       const searchWrap = document.getElementById('tag-search-wrap');
-      if (tags.length > 0 || allTags.length > 0 || suggestedTags.length > 0) {
-        searchWrap.style.display = '';
-      }
+      if (photoTagSet.size > 0 || allTags.length > 0) searchWrap.style.display = '';
 
-      if (tags.length === 0) return;
+      const pillTags = suggestedTags.filter(t => photoTagSet.has(t));
+      if (pillTags.length === 0) return;
 
-      const visible  = tags.slice(0, MAX_TAG_PILLS);
-      overflowTags   = tags.slice(MAX_TAG_PILLS); // stored for search dropdown
-
-      ['All', ...visible].forEach(tag => {
+      ['All', ...pillTags].forEach(tag => {
         const btn = document.createElement('button');
         btn.className = 'tag-pill' + (tag === activeTag ? ' active' : '');
         btn.textContent = tag;
@@ -1209,13 +1199,6 @@
         });
         wrap.appendChild(btn);
       });
-
-      if (overflowTags.length > 0) {
-        const more = document.createElement('span');
-        more.className = 'tag-pill tag-pill-more';
-        more.textContent = `+${overflowTags.length} more`;
-        wrap.appendChild(more);
-      }
     }
 
     function renderYearFilter(photosArr) {
@@ -1262,8 +1245,8 @@
       input.addEventListener('focus', () => {
         const q = input.value.trim().toLowerCase();
         if (!q) {
-          const showList = overflowTags.length ? overflowTags : suggestedTags;
-          if (showList.length) showTagSuggestions(showList, overflowTags.length ? 'More tags' : 'Suggested');
+          const unsuggestedTags = allTags.filter(t => !suggestedTags.includes(t));
+          if (unsuggestedTags.length) showTagSuggestions(unsuggestedTags, 'More tags');
         } else {
           const matches = allTags.filter(t => t.toLowerCase().includes(q));
           if (matches.length) showTagSuggestions(matches);
