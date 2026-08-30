@@ -114,7 +114,7 @@ async function restoreConfigFromCloudinary() {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify({
           name: 'Lucrolla', tagline: '', instagram: '',
           heroImages: [], heroImage: '', aboutImage: '', about: '',
-          photos: [], media: []
+          photos: [], media: [], tags: [], suggestedTags: []
         }, null, 2));
       }
     } else {
@@ -139,8 +139,10 @@ app.get('/config', (req, res) => {
   try {
     const data = readConfig();
     if (!data.heroImages || !data.heroImages.length) data.heroImages = data.heroImage ? [data.heroImage] : [];
-    if (data.about  === undefined) data.about  = '';
-    if (!data.media)               data.media  = [];
+    if (data.about         === undefined) data.about         = '';
+    if (!data.media)                      data.media         = [];
+    if (!data.tags)                       data.tags          = [];
+    if (!data.suggestedTags)              data.suggestedTags = [];
     res.json(publicConfig(data));
   } catch (err) {
     res.status(500).json({ error: 'Could not read config' });
@@ -170,6 +172,17 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
     const isHero  = req.query.hero  === 'true';
     const isAbout = req.query.about === 'true';
 
+    let tag = '';
+    let year = '';
+    if (!isHero && !isAbout) {
+      tag  = (req.body.tag  || '').trim();
+      year = (req.body.year || String(new Date().getFullYear())).trim();
+      if (tag) {
+        if (!config.tags) config.tags = [];
+        if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
+      }
+    }
+
     for (const file of req.files) {
       const item = await uploadBuffer(file.buffer, { folder: 'portfolio/photos' });
 
@@ -181,7 +194,7 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
         config.aboutImage = item;
         break; // only one about image
       } else {
-        config.photos.push({ ...item, alt: '' });
+        config.photos.push({ ...item, alt: '', tag, year, featured: false });
       }
     }
 
@@ -234,6 +247,65 @@ app.delete('/photo', requireAuth, async (req, res) => {
     res.json({ success: true, config: publicConfig(config) });
   } catch (err) {
     res.status(500).json({ error: 'Delete failed: ' + err.message });
+  }
+});
+
+// PATCH /photo/year?src=<url> — update the year on an existing gallery photo
+app.patch('/photo/year', requireAuth, (req, res) => {
+  try {
+    const src  = req.query.src;
+    const year = (req.body.year || '').trim();
+    if (!year) return res.status(400).json({ error: 'Year is required' });
+
+    const config = readConfig();
+    const item   = config.photos.find(p => p.src === src);
+    if (!item) return res.status(404).json({ error: 'Photo not found' });
+
+    item.year = year;
+    writeConfig(config);
+    res.json({ success: true, config: publicConfig(config) });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed: ' + err.message });
+  }
+});
+
+// PATCH /photo/tag?src=<url> — update or clear the tag on an existing gallery photo
+app.patch('/photo/tag', requireAuth, (req, res) => {
+  try {
+    const src  = req.query.src;
+    const tag  = (req.body.tag ?? '').trim(); // empty string clears the tag
+
+    const config = readConfig();
+    const item   = config.photos.find(p => p.src === src);
+    if (!item) return res.status(404).json({ error: 'Photo not found' });
+
+    item.tag = tag;
+    if (tag) {
+      if (!config.tags) config.tags = [];
+      if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
+    }
+
+    writeConfig(config);
+    res.json({ success: true, config: publicConfig(config) });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed: ' + err.message });
+  }
+});
+
+// POST /photo/featured?src=<url> — toggle a gallery photo's featured flag
+app.post('/photo/featured', requireAuth, (req, res) => {
+  try {
+    const src    = req.query.src;
+    const config = readConfig();
+
+    const item = config.photos.find(p => p.src === src);
+    if (!item) return res.status(404).json({ error: 'Photo not found' });
+    item.featured = !item.featured;
+
+    writeConfig(config);
+    res.json({ success: true, config: publicConfig(config) });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed: ' + err.message });
   }
 });
 

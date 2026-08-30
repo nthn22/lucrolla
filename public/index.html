@@ -447,6 +447,129 @@
 
     .play-icon svg { width: 18px; height: 18px; margin-left: 2px; fill: #1a1a1a; }
 
+    /* ── Featured ───────────────────────────────────────────── */
+    #featured .photo-grid { grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 768px) {
+      #featured .photo-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ── Tag filter pills ───────────────────────────────────── */
+    .tag-filter {
+      display: flex;
+      gap: 0.6rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      margin-bottom: 2rem;
+      scrollbar-width: none;
+    }
+    .tag-filter::-webkit-scrollbar { display: none; }
+
+    .tag-pill {
+      flex: none;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--warm-gray);
+      padding: 0.45rem 1.1rem;
+      border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .tag-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .tag-pill.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 500; }
+
+    /* ── Gallery header (heading + sort toggle) ─────────────── */
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .gallery-header .section-heading { margin-bottom: 0; }
+
+    .sort-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .sort-btn {
+      background: transparent;
+      border: none;
+      color: var(--warm-gray);
+      padding: 0.45rem 0.9rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    .sort-btn:first-child { border-right: 1px solid var(--border); }
+    .sort-btn.active { background: rgba(255,255,255,0.08); color: var(--warm-black); }
+    .sort-btn:hover:not(.active) { color: var(--accent); }
+
+    /* ── Tag search bar ─────────────────────────────────────── */
+    .tag-search-wrap {
+      position: relative;
+      margin-bottom: 1.25rem;
+      max-width: 380px;
+    }
+    .tag-search-icon {
+      position: absolute;
+      left: 0.8rem; top: 50%; transform: translateY(-50%);
+      width: 14px; height: 14px;
+      color: var(--warm-gray);
+      pointer-events: none;
+    }
+    .tag-search-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--warm-black);
+      padding: 0.6rem 1rem 0.6rem 2.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .tag-search-input::placeholder { color: var(--warm-gray); }
+    .tag-search-input:focus { border-color: var(--accent); }
+
+    .tag-autocomplete {
+      position: absolute;
+      top: calc(100% + 6px); left: 0; right: 0;
+      background: #252220;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      z-index: 20;
+      display: none;
+    }
+    .tag-autocomplete.open { display: block; }
+    .tag-ac-label {
+      padding: 0.5rem 1rem 0.2rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--warm-gray);
+      opacity: 0.65;
+    }
+    .tag-ac-item {
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--warm-gray);
+      transition: background 0.15s, color 0.15s;
+    }
+    .tag-ac-item:hover { background: rgba(200,169,126,0.1); color: var(--warm-black); }
+
     /* ── Gallery (Photos) ───────────────────────────────────── */
     .photo-grid {
       display: grid;
@@ -615,6 +738,17 @@
       letter-spacing: 0.14em;
     }
 
+    .lb-detail {
+      position: fixed;
+      bottom: 3.2rem; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.55);
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
     /* ── Video Lightbox ─────────────────────────────────────── */
     #video-lightbox {
       display: none;
@@ -723,11 +857,36 @@
     <div class="hero-dots" id="hero-dots" aria-label="Slide navigation"></div>
   </section>
 
+  <!-- ── Featured ──────────────────────────────────────────── -->
+  <section id="featured" style="display:none">
+    <div class="section-inner">
+      <p class="section-label fade-up">Curated</p>
+      <h2 class="section-heading fade-up">Featured</h2>
+      <div class="photo-grid" id="featured-grid"></div>
+    </div>
+  </section>
+
   <!-- ── Gallery ───────────────────────────────────────────── -->
   <section id="gallery">
     <div class="section-inner">
       <p class="section-label fade-up">Selected Work <span class="label-update">&middot; Updated Monthly</span></p>
-      <h2 class="section-heading fade-up">Gallery</h2>
+      <div class="gallery-header fade-up">
+        <h2 class="section-heading">Gallery</h2>
+        <div class="sort-toggle" id="sort-toggle">
+          <button class="sort-btn active" data-sort="newest">Newest</button>
+          <button class="sort-btn" data-sort="oldest">Oldest</button>
+        </div>
+      </div>
+      <div class="tag-search-wrap" id="tag-search-wrap" style="display:none">
+        <svg class="tag-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <input type="text" class="tag-search-input" id="tag-search" placeholder="Search by tag…" autocomplete="off" />
+        <div class="tag-autocomplete" id="tag-autocomplete"></div>
+      </div>
+      <div class="tag-filter" id="tag-filter"></div>
+      <div class="tag-filter" id="year-filter" style="display:none"></div>
       <div class="photo-grid" id="photo-grid"></div>
       <div id="photo-pagination"></div>
     </div>
@@ -783,6 +942,7 @@
       <img id="lb-img" src="" alt="" />
     </div>
     <button class="lb-arrow lb-next" id="lb-next" aria-label="Next">&#8594;</button>
+    <div class="lb-detail" id="lb-detail"></div>
     <div class="lb-counter" id="lb-counter"></div>
   </div>
 
@@ -803,6 +963,12 @@
     let mediaPage = 0;
     let currentSlide  = 0;
     let heroSlides    = [];
+    let activeTag      = 'All';
+    let activeYear     = 'All';
+    let photoSort      = 'newest';
+    let allTags        = [];
+    let suggestedTags  = [];
+    let lightboxSource = []; // whichever photo list is currently open in the lightbox
 
     // ── Load config & populate everything ─────────────────────
     async function loadSite() {
@@ -847,8 +1013,16 @@
           document.getElementById('media').style.display = '';
         }
 
+        // Featured
+        renderFeatured(data.photos || []);
+
         // Gallery
-        photos = data.photos || [];
+        photos        = data.photos        || [];
+        allTags       = data.tags          || [];
+        suggestedTags = data.suggestedTags || [];
+        renderTagFilter(photos);
+        renderYearFilter(photos);
+        setupTagSearch();
         renderGallery(photos);
 
         // Start scroll-reveal observer after DOM is ready
@@ -994,27 +1168,181 @@
       });
     }
 
+    // ── Tag filter ──────────────────────────────────────────────
+    function renderTagFilter(photosArr) {
+      const wrap = document.getElementById('tag-filter');
+      wrap.innerHTML = '';
+      const tags = [...new Set((photosArr || []).map(p => p.tag).filter(Boolean))];
+
+      // Show search box when there's anything to search or suggest
+      const searchWrap = document.getElementById('tag-search-wrap');
+      if (tags.length > 0 || allTags.length > 0 || suggestedTags.length > 0) {
+        searchWrap.style.display = '';
+      }
+
+      if (tags.length === 0) return;
+      ['All', ...tags].forEach(tag => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-pill' + (tag === activeTag ? ' active' : '');
+        btn.textContent = tag;
+        btn.addEventListener('click', () => {
+          if (tag === activeTag) return;
+          activeTag = tag;
+          photoPage = 0;
+          const si = document.getElementById('tag-search');
+          if (si) si.value = tag === 'All' ? '' : tag;
+          renderTagFilter(photos);
+          renderGallery(photos);
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    function renderYearFilter(photosArr) {
+      const wrap  = document.getElementById('year-filter');
+      wrap.innerHTML = '';
+      const years = [...new Set((photosArr || []).filter(p => p.year).map(p => p.year))]
+        .sort((a, b) => Number(b) - Number(a)); // most recent first
+
+      if (years.length < 2) { wrap.style.display = 'none'; return; } // only show if >1 year
+      wrap.style.display = '';
+
+      ['All', ...years].forEach(year => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-pill' + (year === activeYear ? ' active' : '');
+        btn.textContent = year === 'All' ? 'All years' : year;
+        btn.addEventListener('click', () => {
+          if (year === activeYear) return;
+          activeYear = year;
+          photoPage = 0;
+          renderYearFilter(photos);
+          renderGallery(photos);
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    // Sort toggle
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sort = btn.dataset.sort;
+        if (sort === photoSort) return;
+        photoSort = sort;
+        photoPage = 0;
+        document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sort));
+        renderGallery(photos);
+      });
+    });
+
+    function setupTagSearch() {
+      const input    = document.getElementById('tag-search');
+      const dropdown = document.getElementById('tag-autocomplete');
+      if (!input || !dropdown) return;
+
+      input.addEventListener('focus', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q && suggestedTags.length) showTagSuggestions(suggestedTags, 'Suggested');
+        else if (q) {
+          const matches = allTags.filter(t => t.toLowerCase().includes(q));
+          if (matches.length) showTagSuggestions(matches);
+        }
+      });
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q) {
+          if (suggestedTags.length) showTagSuggestions(suggestedTags, 'Suggested');
+          else dropdown.classList.remove('open');
+          return;
+        }
+        const matches = allTags.filter(t => t.toLowerCase().includes(q));
+        if (matches.length) showTagSuggestions(matches);
+        else dropdown.classList.remove('open');
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const q = input.value.trim();
+          if (q) {
+            activeTag = q;
+            photoPage = 0;
+            dropdown.classList.remove('open');
+            renderTagFilter(photos);
+            renderGallery(photos);
+          } else {
+            activeTag = 'All';
+            photoPage = 0;
+            dropdown.classList.remove('open');
+            renderTagFilter(photos);
+            renderGallery(photos);
+          }
+        }
+        if (e.key === 'Escape') {
+          dropdown.classList.remove('open');
+          input.blur();
+        }
+      });
+
+      // Close dropdown when clicking outside the search wrap
+      document.addEventListener('click', (e) => {
+        const wrap = document.getElementById('tag-search-wrap');
+        if (wrap && !wrap.contains(e.target)) dropdown.classList.remove('open');
+      });
+    }
+
+    function showTagSuggestions(tags, label) {
+      const dropdown = document.getElementById('tag-autocomplete');
+      dropdown.innerHTML = '';
+      if (label) {
+        const lbl = document.createElement('div');
+        lbl.className = 'tag-ac-label';
+        lbl.textContent = label;
+        dropdown.appendChild(lbl);
+      }
+      tags.forEach(tag => {
+        const item = document.createElement('div');
+        item.className = 'tag-ac-item';
+        item.textContent = tag;
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault(); // prevent blur before click registers
+          activeTag = tag;
+          photoPage = 0;
+          document.getElementById('tag-search').value = tag;
+          dropdown.classList.remove('open');
+          renderTagFilter(photos);
+          renderGallery(photos);
+        });
+        dropdown.appendChild(item);
+      });
+      dropdown.classList.add('open');
+    }
+
     // ── Gallery (Photos) ───────────────────────────────────────
     function renderGallery(photosArr) {
       const grid = document.getElementById('photo-grid');
       grid.innerHTML = '';
 
-      if (!photosArr || photosArr.length === 0) {
+      let filtered = photosArr || [];
+      if (activeTag  !== 'All') filtered = filtered.filter(p => p.tag  === activeTag);
+      if (activeYear !== 'All') filtered = filtered.filter(p => p.year === activeYear);
+      if (photoSort  === 'newest') filtered = [...filtered].reverse();
+
+      if (!filtered.length) {
         grid.innerHTML = '<p class="empty-state">No photos yet.</p>';
         document.getElementById('photo-pagination').innerHTML = '';
         return;
       }
 
-      const totalPages = Math.ceil(photosArr.length / PAGE_SIZE);
+      const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
       const start = photoPage * PAGE_SIZE;
-      const pagePhotos = photosArr.slice(start, start + PAGE_SIZE);
+      const pagePhotos = filtered.slice(start, start + PAGE_SIZE);
 
       pagePhotos.forEach((photo, i) => {
         const globalIndex = start + i;
         const item = document.createElement('div');
         item.className = 'photo-item fade-up';
         item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" draggable="false" />`;
-        item.addEventListener('click', () => openPhotoLightbox(globalIndex));
+        item.addEventListener('click', () => openPhotoLightbox(filtered, globalIndex));
         grid.appendChild(item);
       });
 
@@ -1027,8 +1355,30 @@
       initScrollReveal();
     }
 
+    // ── Featured ───────────────────────────────────────────────
+    function renderFeatured(photosArr) {
+      const featured = (photosArr || []).filter(p => p.featured);
+      const section  = document.getElementById('featured');
+      const grid      = document.getElementById('featured-grid');
+      grid.innerHTML = '';
+
+      if (!featured.length) { section.style.display = 'none'; return; }
+      section.style.display = '';
+
+      featured.forEach((photo, i) => {
+        const item = document.createElement('div');
+        item.className = 'photo-item fade-up';
+        item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" draggable="false" />`;
+        item.addEventListener('click', () => openPhotoLightbox(featured, i));
+        grid.appendChild(item);
+      });
+
+      initScrollReveal();
+    }
+
     // ── Photo Lightbox ─────────────────────────────────────────
-    function openPhotoLightbox(index) {
+    function openPhotoLightbox(source, index) {
+      lightboxSource = source;
       currentPhotoIndex = index;
       updatePhotoLightbox();
       document.getElementById('photo-lightbox').classList.add('active');
@@ -1036,10 +1386,12 @@
     }
 
     function updatePhotoLightbox() {
-      document.getElementById('lb-img').src =
-        photos[currentPhotoIndex].src;
+      const photo = lightboxSource[currentPhotoIndex];
+      document.getElementById('lb-img').src = photo.src;
       document.getElementById('lb-counter').textContent =
-        `${currentPhotoIndex + 1} / ${photos.length}`;
+        `${currentPhotoIndex + 1} / ${lightboxSource.length}`;
+      const parts = [photo.tag, photo.year].filter(Boolean);
+      document.getElementById('lb-detail').textContent = parts.join(' · ');
     }
 
     function closePhotoLightbox() {
@@ -1049,11 +1401,11 @@
 
     document.getElementById('lb-photo-close').addEventListener('click', closePhotoLightbox);
     document.getElementById('lb-prev').addEventListener('click', () => {
-      currentPhotoIndex = (currentPhotoIndex - 1 + photos.length) % photos.length;
+      currentPhotoIndex = (currentPhotoIndex - 1 + lightboxSource.length) % lightboxSource.length;
       updatePhotoLightbox();
     });
     document.getElementById('lb-next').addEventListener('click', () => {
-      currentPhotoIndex = (currentPhotoIndex + 1) % photos.length;
+      currentPhotoIndex = (currentPhotoIndex + 1) % lightboxSource.length;
       updatePhotoLightbox();
     });
     document.getElementById('photo-lightbox').addEventListener('click', (e) => {

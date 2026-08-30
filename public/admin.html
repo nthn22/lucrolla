@@ -119,8 +119,33 @@
       color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;
       cursor:pointer; opacity:0; transition:opacity .2s; line-height:1;
     }
-    .admin-item:hover .del-btn { opacity:1; }
+    .admin-item .feat-btn {
+      position:absolute; top:5px; left:5px; width:24px; height:24px;
+      background:rgba(10,8,6,.78); border:none; border-radius:50%;
+      color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; opacity:0; transition:opacity .2s, color .2s; line-height:1;
+    }
+    .admin-item:hover .del-btn, .admin-item:hover .feat-btn { opacity:1; }
+    .admin-item .feat-btn.active { opacity:1; color:var(--accent); }
+    .admin-item .tag-badge {
+      position:absolute; bottom:5px; left:5px; max-width:calc(100% - 10px);
+      background:rgba(10,8,6,.78); color:var(--text); font-size:.68rem;
+      padding:.2rem .5rem; border-radius:4px; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis;
+    }
     .no-items { color:var(--muted); font-size:.82rem; margin-top:.75rem; }
+
+    /* ── Tag picker ────────────────────────────────────────── */
+    .tag-picker { display:flex; gap:.6rem; margin-bottom:1rem; }
+    .tag-picker select, .tag-picker input {
+      background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+      color:var(--text); padding:.6rem .85rem; font-size:.85rem;
+      font-family:'Inter',sans-serif; outline:none; transition:border-color .2s;
+    }
+    .tag-picker select:focus, .tag-picker input:focus { border-color:var(--accent); }
+    .tag-picker select { flex:1; }
+    .tag-picker input { flex:1; display:none; }
+    .tag-picker input.visible { display:block; }
 
     /* ── Toast ─────────────────────────────────────────────── */
     #toast {
@@ -134,6 +159,89 @@
     #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     #toast.ok   { border-color:var(--success); color:var(--success); }
     #toast.err  { border-color:var(--danger);  color:var(--danger);  }
+
+    /* ── Suggested tags ────────────────────────────────────────── */
+    .suggested-tags-list { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0; min-height:1.5rem; }
+    .suggested-tag-chip {
+      display:inline-flex; align-items:center; gap:.35rem;
+      background:var(--dim); border:1px solid rgba(200,169,126,.3);
+      color:var(--accent); font-size:.75rem; padding:.28rem .7rem;
+      border-radius:999px;
+    }
+    .suggested-tag-chip button {
+      background:none; border:none; color:inherit; cursor:pointer;
+      font-size:.9rem; line-height:1; opacity:.6; padding:0; font-family:inherit;
+    }
+    .suggested-tag-chip button:hover { opacity:1; }
+    .suggested-tag-add { display:flex; gap:.5rem; }
+    .suggested-tag-add input {
+      flex:1; background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; color:var(--text); padding:.55rem .85rem;
+      font-size:.85rem; font-family:'Inter',sans-serif; outline:none; transition:border-color .2s;
+    }
+    .suggested-tag-add input:focus { border-color:var(--accent); }
+
+    /* ── Admin gallery filter ──────────────────────────────────── */
+    .admin-filter-input {
+      width:100%; background:var(--surface2); border:1px solid var(--border);
+      border-radius:6px; color:var(--text); padding:.55rem .85rem;
+      font-size:.85rem; font-family:'Inter',sans-serif; outline:none;
+      transition:border-color .2s; margin-top:1.25rem; margin-bottom:.25rem;
+    }
+    .admin-filter-input::placeholder { color:var(--muted); }
+    .admin-filter-input:focus { border-color:var(--accent); }
+
+    /* ── Admin gallery pagination ──────────────────────────────── */
+    #photos-pagination { display:flex; justify-content:center; margin-top:1rem; }
+    .admin-pagination { display:flex; gap:.35rem; flex-wrap:wrap; justify-content:center; }
+    .admin-pg-btn {
+      background:var(--surface2); border:1px solid var(--border); color:var(--muted);
+      width:32px; height:32px; border-radius:5px; font-size:.8rem;
+      font-family:'Inter',sans-serif; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .2s, color .2s, border-color .2s;
+    }
+    .admin-pg-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+    .admin-pg-btn.active { background:var(--accent); border-color:var(--accent); color:#1a1410; font-weight:600; }
+    .admin-pg-btn:disabled { opacity:.3; cursor:default; }
+
+    /* ── Admin tag list (manage tags) ─────────────────────────── */
+    .admin-tag-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:.5rem 0 1rem; min-height:1rem; }
+    .admin-tag-chip-del {
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:var(--surface2); border:1px solid var(--border);
+      color:var(--muted); font-size:.72rem; padding:.2rem .55rem; border-radius:4px;
+    }
+    .admin-tag-chip-del .chip-x {
+      cursor:pointer; color:var(--muted); font-size:.72rem; transition:color .15s; line-height:1;
+    }
+    .admin-tag-chip-del .chip-x:hover { color:var(--danger); }
+
+    /* ── Admin filter autocomplete ─────────────────────────────── */
+    .admin-search-wrap { position:relative; margin-bottom:.75rem; }
+    .admin-search-wrap .admin-filter-input { margin-bottom:0; width:100%; }
+    .admin-search-ac {
+      position:absolute; top:100%; left:0; right:0; z-index:20;
+      background:var(--surface2); border:1px solid var(--border);
+      border-top:none; border-radius:0 0 6px 6px; display:none;
+      max-height:180px; overflow-y:auto;
+    }
+    .admin-search-ac .ac-item {
+      padding:.45rem .75rem; font-size:.78rem; cursor:pointer;
+      color:var(--text); transition:background .1s;
+    }
+    .admin-search-ac .ac-item:hover { background:var(--dim); color:var(--accent); }
+
+    /* ── Tag badge inline edit ─────────────────────────────────── */
+    .admin-item .tag-badge { cursor:pointer; }
+    .admin-item .tag-badge:hover { background:rgba(200,169,126,.25); }
+    .admin-item .tag-badge .tag-clear {
+      display:inline-block; margin-left:.3rem; opacity:0;
+      transition:opacity .15s, color .15s; cursor:pointer; color:var(--muted);
+      font-size:.75rem; vertical-align:middle; line-height:1;
+    }
+    .admin-item .tag-badge:hover .tag-clear { opacity:1; }
+    .admin-item .tag-badge .tag-clear:hover { color:var(--danger); }
   </style>
 </head>
 <body>
@@ -228,13 +336,45 @@
     <!-- 4. Portfolio Gallery -->
     <div class="card">
       <p class="card-title">Portfolio Gallery</p>
+
+      <!-- Suggested Tags -->
+      <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+        <p style="font-size:.75rem;font-weight:500;color:var(--muted);margin-bottom:.25rem">Suggested Tags</p>
+        <p style="font-size:.75rem;color:var(--muted);opacity:.6;margin-bottom:.75rem">Shown on the site when visitors open the search bar</p>
+        <div class="suggested-tags-list" id="suggested-tags-list"></div>
+        <div class="suggested-tag-add">
+          <input type="text" id="suggested-tag-input" placeholder="Add a suggested tag…" />
+          <button class="btn btn-ghost" id="btn-add-suggested">Add</button>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:.75rem">
+        Pick a tag before uploading — every photo in this batch gets that tag.
+      </p>
+      <div class="tag-picker" style="flex-wrap:wrap">
+        <select id="photos-tag-select" style="flex:2;min-width:120px">
+          <option value="">Select a tag…</option>
+          <option value="__new__">+ New tag…</option>
+        </select>
+        <input type="text" id="photos-tag-new" placeholder="New tag name" style="min-width:120px" />
+        <input type="number" id="photos-year" placeholder="Year" min="2000" max="2099" style="width:82px;flex:none" />
+      </div>
+      <div class="admin-tag-chips" id="admin-tag-chips"></div>
       <div class="drop-zone" id="photos-drop">
         <input type="file" id="photos-file" accept="image/*" multiple />
         Drop photos here or <u>click to browse</u><br />
         <span style="font-size:.75rem;opacity:.6">jpg, png, gif, webp — multiple files supported</span>
       </div>
       <div class="progress-wrap" id="photos-prog-wrap"><div class="progress-fill" id="photos-prog-fill"></div></div>
+
+      <!-- Filter + Grid -->
+      <div class="admin-search-wrap">
+        <input type="text" class="admin-filter-input" id="admin-photos-search" placeholder="Filter by tag…" autocomplete="off" />
+        <div class="admin-search-ac" id="admin-search-ac"></div>
+      </div>
       <div class="admin-grid" id="photos-grid"></div>
+      <div id="photos-pagination"></div>
     </div>
 
     <!-- 5. Media (Videos) -->
@@ -273,6 +413,7 @@
         if (data.success) {
           sessionToken = data.token;
           document.getElementById('auth-overlay').style.display = 'none';
+          document.getElementById('photos-year').value = new Date().getFullYear();
           loadAdminData();
         } else {
           document.getElementById('pw-err').textContent = 'Incorrect password.';
@@ -297,7 +438,10 @@
     }
 
     // ── State ─────────────────────────────────────────────────
-    let config = {};
+    let config         = {};
+    let adminPhotoPage = 0;
+    let adminPhotoFilter = '';
+    const ADMIN_PAGE_SIZE = 21;
 
     // ── Load data ─────────────────────────────────────────────
     async function loadAdminData() {
@@ -310,9 +454,73 @@
         document.getElementById('input-about').value   = config.about     || '';
         renderHeroGrid(config.heroImages   || []);
         renderAboutImage(config.aboutImage || '');
+        renderTagSelect(config.tags        || []);
+        renderSuggestedTags(config.suggestedTags || []);
         renderPhotosGrid(config.photos     || []);
         renderMediaGrid(config.media       || []);
       } catch { showToast('Could not load data', 'err'); }
+    }
+
+    // ── Tag picker ────────────────────────────────────────────
+    function renderTagSelect(tags) {
+      const select = document.getElementById('photos-tag-select');
+      const prev   = select.value;
+      select.innerHTML = '<option value="">Select a tag…</option>' +
+        tags.map(t => `<option value="${t}">${t}</option>`).join('') +
+        '<option value="__new__">+ New tag…</option>';
+      if (tags.includes(prev)) select.value = prev;
+      renderTagList(tags);
+    }
+
+    function renderTagList(tags) {
+      const wrap = document.getElementById('admin-tag-chips');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'admin-tag-chip-del';
+        const label = document.createElement('span');
+        label.textContent = tag;
+        const x = document.createElement('span');
+        x.className = 'chip-x';
+        x.textContent = '×';
+        x.title = 'Remove tag from list';
+        x.addEventListener('click', () => deleteTag(tag));
+        chip.appendChild(label);
+        chip.appendChild(x);
+        wrap.appendChild(chip);
+      });
+    }
+
+    async function deleteTag(tag) {
+      const newTags = (config.tags || []).filter(t => t !== tag);
+      try {
+        const res  = await fetch('/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ tags: newTags })
+        });
+        const data = await res.json();
+        if (data.success) {
+          config = data.config;
+          renderTagSelect(newTags);
+          showToast('Tag removed from list');
+        } else {
+          showToast(data.error || 'Could not remove tag', 'err');
+        }
+      } catch { showToast('Could not remove tag', 'err'); }
+    }
+
+    const tagSelect = document.getElementById('photos-tag-select');
+    const tagNew    = document.getElementById('photos-tag-new');
+    tagSelect.addEventListener('change', () => {
+      tagNew.classList.toggle('visible', tagSelect.value === '__new__');
+      if (tagSelect.value === '__new__') tagNew.focus();
+    });
+
+    function getSelectedTag() {
+      if (tagSelect.value === '__new__') return tagNew.value.trim();
+      return tagSelect.value.trim();
     }
 
     // ── Save settings ─────────────────────────────────────────
@@ -342,7 +550,7 @@
     }
 
     // ── Generic upload — one file per request ─────────────────
-    async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess) {
+    async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess, extraFields = {}, onEach = null) {
       if (!files || !files.length) return;
       let uploaded = 0;
       let lastData = null;
@@ -350,10 +558,11 @@
         showProg(progKey, Math.round((uploaded / files.length) * 90) + 5);
         const form = new FormData();
         form.append(fieldName, file);
+        Object.entries(extraFields).forEach(([k, v]) => form.append(k, v));
         try {
           const res  = await fetch(endpoint, { method: 'POST', headers: authHeaders(), body: form });
           const data = await res.json();
-          if (data.success) { config = data.config; lastData = data; uploaded++; }
+          if (data.success) { config = data.config; lastData = data; uploaded++; if (onEach) onEach(data); }
           else { showToast(data.error || 'Upload failed', 'err'); break; }
         } catch { showToast('Upload error', 'err'); break; }
       }
@@ -423,22 +632,91 @@
     function renderPhotosGrid(photos) {
       const grid = document.getElementById('photos-grid');
       grid.innerHTML = '';
-      if (!photos.length) { grid.innerHTML = '<p class="no-items">No photos yet.</p>'; return; }
-      photos.forEach(photo => {
-        const item = makeAdminItem(photo.src + '?t=' + Date.now(), false);
+
+      const reversed = [...photos].reverse();
+      const filtered = adminPhotoFilter
+        ? reversed.filter(p => (p.tag || '').toLowerCase().includes(adminPhotoFilter))
+        : reversed;
+
+      if (!filtered.length) {
+        grid.innerHTML = adminPhotoFilter
+          ? `<p class="no-items">No photos match "${adminPhotoFilter}".</p>`
+          : '<p class="no-items">No photos yet.</p>';
+        document.getElementById('photos-pagination').innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.ceil(filtered.length / ADMIN_PAGE_SIZE);
+      if (adminPhotoPage >= totalPages) adminPhotoPage = Math.max(0, totalPages - 1);
+      const start     = adminPhotoPage * ADMIN_PAGE_SIZE;
+      const pageItems = filtered.slice(start, start + ADMIN_PAGE_SIZE);
+
+      pageItems.forEach(photo => {
+        const item = makeAdminItem(photo.src + '?t=' + Date.now(), false, { photo, showFeatured: true });
         item.querySelector('.del-btn').addEventListener('click', async () => {
           await deleteItem('photo', photo.src);
+          adminPhotoPage = 0;
           renderPhotosGrid(config.photos || []);
           showToast('Photo deleted');
         });
+        item.querySelector('.feat-btn').addEventListener('click', async () => {
+          const res  = await fetch('/photo/featured?src=' + encodeURIComponent(photo.src), {
+            method: 'POST', headers: authHeaders()
+          });
+          const data = await res.json();
+          if (data.success) { config = data.config; renderPhotosGrid(config.photos || []); }
+          else showToast('Update failed', 'err');
+        });
         grid.appendChild(item);
+      });
+
+      renderAdminPagination(adminPhotoPage, totalPages, (page) => {
+        adminPhotoPage = page;
+        renderPhotosGrid(config.photos || []);
+        document.getElementById('photos-grid').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
     }
 
-    wireUpload('photos-drop', 'photos-file', true, files =>
-      uploadFiles('/upload', 'photos', files, 'photos-prog',
-        data => renderPhotosGrid(data.config.photos || []))
-    );
+    function renderAdminPagination(currentPage, totalPages, onPageChange) {
+      const container = document.getElementById('photos-pagination');
+      container.innerHTML = '';
+      if (totalPages <= 1) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'admin-pagination';
+
+      const prev = document.createElement('button');
+      prev.className = 'admin-pg-btn'; prev.textContent = '←';
+      prev.disabled = currentPage === 0;
+      prev.addEventListener('click', () => onPageChange(currentPage - 1));
+      wrap.appendChild(prev);
+
+      for (let i = 0; i < totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'admin-pg-btn' + (i === currentPage ? ' active' : '');
+        btn.textContent = i + 1;
+        btn.addEventListener('click', () => onPageChange(i));
+        wrap.appendChild(btn);
+      }
+
+      const next = document.createElement('button');
+      next.className = 'admin-pg-btn'; next.textContent = '→';
+      next.disabled = currentPage === totalPages - 1;
+      next.addEventListener('click', () => onPageChange(currentPage + 1));
+      wrap.appendChild(next);
+
+      container.appendChild(wrap);
+    }
+
+    wireUpload('photos-drop', 'photos-file', true, files => {
+      const tag  = getSelectedTag();
+      const year = document.getElementById('photos-year').value.trim()
+                   || String(new Date().getFullYear());
+      const onPhotos = data => {
+        renderTagSelect(data.config.tags || []);
+        renderPhotosGrid(data.config.photos || []);
+      };
+      return uploadFiles('/upload', 'photos', files, 'photos-prog', onPhotos, { tag, year }, onPhotos);
+    });
 
     // ── Media (videos) ────────────────────────────────────────
     function renderMediaGrid(media) {
@@ -462,17 +740,117 @@
     );
 
     // ── DOM helpers ───────────────────────────────────────────
-    // Build an admin grid item with either an <img> or <video> and a delete button
-    function makeAdminItem(src, isVideo) {
+    function makeAdminItem(src, isVideo, opts = {}) {
+      const { photo, tag: tagOpt, featured: featuredOpt, showFeatured } = opts;
+      const tag      = photo ? photo.tag      : tagOpt;
+      const featured = photo ? photo.featured : featuredOpt;
+
       const div = document.createElement('div');
       div.className = 'admin-item' + (isVideo ? ' video-item' : '');
       const media = document.createElement(isVideo ? 'video' : 'img');
       media.src = src;
       if (!isVideo) { media.alt = ''; media.loading = 'lazy'; }
       else          { media.muted = true; media.preload = 'metadata'; }
+      div.appendChild(media);
+
+      if (showFeatured) {
+        const featBtn = document.createElement('button');
+        featBtn.className = 'feat-btn' + (featured ? ' active' : '');
+        featBtn.title = featured ? 'Remove from Featured' : 'Mark as Featured';
+        featBtn.textContent = '★';
+        div.appendChild(featBtn);
+
+        // Tag badge — click to inline-edit; × button to clear
+        const badge = document.createElement('span');
+        badge.className = 'tag-badge';
+        badge.title = 'Click to edit tag';
+
+        const badgeText = document.createElement('span');
+        badgeText.textContent = tag || '—';
+        badge.appendChild(badgeText);
+
+        if (photo) {
+          // × clear button — appears on badge hover
+          const clearX = document.createElement('span');
+          clearX.className = 'tag-clear';
+          clearX.textContent = '×';
+          clearX.title = 'Remove tag';
+          badge.appendChild(clearX);
+
+          clearX.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+              const res  = await fetch('/photo/tag?src=' + encodeURIComponent(photo.src), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                body: JSON.stringify({ tag: '' })
+              });
+              const data = await res.json();
+              if (data.success) {
+                config = data.config;
+                renderPhotosGrid(data.config.photos || []);
+                showToast('Tag removed');
+              } else {
+                showToast(data.error || 'Remove failed', 'err');
+              }
+            } catch { showToast('Remove failed', 'err'); }
+          });
+
+          badge.addEventListener('click', (e) => {
+            if (e.target === clearX) return; // handled above
+            e.stopPropagation();
+            if (badge.querySelector('input')) return; // already editing
+            const input = document.createElement('input');
+            input.value = photo.tag || '';
+            input.placeholder = 'clear to remove';
+            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.68rem;width:100%;outline:none;padding:0;font-family:Inter,sans-serif;';
+            clearX.style.display = 'none';
+            badgeText.textContent = '';
+            badgeText.appendChild(input);
+            input.focus(); input.select();
+
+            let enterPressed = false;
+
+            async function saveTag() {
+              enterPressed = true;
+              const newTag = input.value.trim();
+              if (newTag === photo.tag) { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; return; }
+              badgeText.textContent = newTag || '—'; // optimistic update
+              clearX.style.display = '';
+              try {
+                const res  = await fetch('/photo/tag?src=' + encodeURIComponent(photo.src), {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                  body: JSON.stringify({ tag: newTag })
+                });
+                const data = await res.json();
+                if (data.success) {
+                  config = data.config;
+                  renderTagSelect(data.config.tags || []);
+                  renderPhotosGrid(data.config.photos || []);
+                  showToast(newTag ? 'Tag updated' : 'Tag removed');
+                } else {
+                  badgeText.textContent = photo.tag || '—';
+                  showToast(data.error || 'Update failed', 'err');
+                }
+              } catch { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; showToast('Update failed', 'err'); }
+            }
+
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') { e.preventDefault(); saveTag(); }
+              if (e.key === 'Escape') { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; }
+            });
+            input.addEventListener('blur', () => {
+              if (!enterPressed) { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; }
+            });
+          });
+        }
+
+        div.appendChild(badge);
+      }
+
       const btn = document.createElement('button');
       btn.className = 'del-btn'; btn.title = 'Delete'; btn.textContent = '×';
-      div.appendChild(media);
       div.appendChild(btn);
       return div;
     }
@@ -497,6 +875,94 @@
         e.target.value = '';
       });
     }
+
+    // ── Suggested tags ────────────────────────────────────────
+    function renderSuggestedTags(tags) {
+      const list = document.getElementById('suggested-tags-list');
+      list.innerHTML = '';
+      if (!tags.length) {
+        list.innerHTML = '<span style="color:var(--muted);font-size:.78rem">None yet.</span>';
+        return;
+      }
+      tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'suggested-tag-chip';
+        const label = document.createTextNode(tag + ' ');
+        const rm    = document.createElement('button');
+        rm.textContent = '×'; rm.title = 'Remove';
+        rm.addEventListener('click', () => removeSuggestedTag(tag));
+        chip.appendChild(label); chip.appendChild(rm);
+        list.appendChild(chip);
+      });
+    }
+
+    async function addSuggestedTag() {
+      const input  = document.getElementById('suggested-tag-input');
+      const tag    = input.value.trim();
+      if (!tag) return;
+      const current = config.suggestedTags || [];
+      if (current.some(t => t.toLowerCase() === tag.toLowerCase())) {
+        showToast('Already in suggested tags', 'err'); return;
+      }
+      await postConfig({ suggestedTags: [...current, tag] }, 'Suggested tag added');
+      renderSuggestedTags(config.suggestedTags || []);
+      input.value = '';
+    }
+
+    async function removeSuggestedTag(tag) {
+      const current = config.suggestedTags || [];
+      await postConfig({ suggestedTags: current.filter(t => t !== tag) }, 'Suggested tag removed');
+      renderSuggestedTags(config.suggestedTags || []);
+    }
+
+    document.getElementById('btn-add-suggested').addEventListener('click', addSuggestedTag);
+    document.getElementById('suggested-tag-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addSuggestedTag();
+    });
+
+    // ── Admin photo filter with autocomplete ─────────────────
+    const adminSearchInput = document.getElementById('admin-photos-search');
+    const adminSearchAc    = document.getElementById('admin-search-ac');
+
+    function showAdminAc(tags) {
+      if (!tags.length) { adminSearchAc.style.display = 'none'; return; }
+      adminSearchAc.innerHTML = '';
+      tags.forEach(tag => {
+        const item = document.createElement('div');
+        item.className = 'ac-item';
+        item.textContent = tag;
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          adminSearchInput.value = tag;
+          adminPhotoFilter = tag.toLowerCase();
+          adminPhotoPage   = 0;
+          renderPhotosGrid(config.photos || []);
+          adminSearchAc.style.display = 'none';
+        });
+        adminSearchAc.appendChild(item);
+      });
+      adminSearchAc.style.display = 'block';
+    }
+
+    adminSearchInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim().toLowerCase();
+      adminPhotoFilter = val;
+      adminPhotoPage   = 0;
+      renderPhotosGrid(config.photos || []);
+      if (val) {
+        showAdminAc((config.tags || []).filter(t => t.toLowerCase().includes(val)));
+      } else {
+        adminSearchAc.style.display = 'none';
+      }
+    });
+
+    adminSearchInput.addEventListener('blur', () => {
+      setTimeout(() => { adminSearchAc.style.display = 'none'; }, 120);
+    });
+
+    adminSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { adminSearchAc.style.display = 'none'; adminSearchInput.blur(); }
+    });
 
     // ── Progress helpers ──────────────────────────────────────
     function showProg(key, pct) {
