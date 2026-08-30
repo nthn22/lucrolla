@@ -232,16 +232,25 @@
     }
     .admin-search-ac .ac-item:hover { background:var(--dim); color:var(--accent); }
 
-    /* ── Tag badge inline edit ─────────────────────────────────── */
-    .admin-item .tag-badge { cursor:pointer; }
-    .admin-item .tag-badge:hover { background:rgba(200,169,126,.25); }
-    .admin-item .tag-badge .tag-clear {
-      display:inline-block; margin-left:.3rem; opacity:0;
-      transition:opacity .15s, color .15s; cursor:pointer; color:var(--muted);
-      font-size:.75rem; vertical-align:middle; line-height:1;
+    /* ── Tag badge — multi-tag chips ──────────────────────────── */
+    .admin-item .tag-badge { cursor:default; }
+    .admin-item .tag-chip {
+      display:inline-flex; align-items:center; gap:.2rem;
+      background:rgba(255,255,255,.09); border-radius:3px;
+      padding:.1rem .3rem; margin:.1rem .1rem 0 0; vertical-align:middle;
     }
-    .admin-item .tag-badge:hover .tag-clear { opacity:1; }
-    .admin-item .tag-badge .tag-clear:hover { color:var(--danger); }
+    .admin-item .tag-chip .chip-x {
+      cursor:pointer; color:var(--muted); font-size:.65rem; line-height:1;
+      transition:color .15s;
+    }
+    .admin-item .tag-chip .chip-x:hover { color:var(--danger); }
+    .admin-item .add-tag-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:15px; height:15px; border-radius:3px; vertical-align:middle; margin:.1rem 0 0;
+      background:rgba(200,169,126,.18); color:var(--accent); font-size:.75rem;
+      cursor:pointer; line-height:1; transition:background .15s;
+    }
+    .admin-item .add-tag-btn:hover { background:rgba(200,169,126,.38); }
   </style>
 </head>
 <body>
@@ -635,7 +644,7 @@
 
       const reversed = [...photos].reverse();
       const filtered = adminPhotoFilter
-        ? reversed.filter(p => (p.tag || '').toLowerCase().includes(adminPhotoFilter))
+        ? reversed.filter(p => (p.tags || []).some(t => t.toLowerCase().includes(adminPhotoFilter)))
         : reversed;
 
       if (!filtered.length) {
@@ -739,10 +748,91 @@
         data => renderMediaGrid(data.config.media || []))
     );
 
+    // ── Multi-tag badge helpers ───────────────────────────────
+    async function patchPhotoTags(src, newTags) {
+      try {
+        const res  = await fetch('/photo/tag?src=' + encodeURIComponent(src), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ tags: newTags })
+        });
+        const data = await res.json();
+        if (data.success) {
+          config = data.config;
+          renderTagSelect(data.config.tags || []);
+          renderPhotosGrid(data.config.photos || []);
+          showToast(newTags.length ? 'Tags updated' : 'Tag removed');
+        } else {
+          showToast(data.error || 'Update failed', 'err');
+        }
+      } catch { showToast('Update failed', 'err'); }
+    }
+
+    function renderTagBadge(photo, badge) {
+      badge.innerHTML = '';
+      const tags = photo.tags || [];
+
+      tags.forEach((tag, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        const label = document.createElement('span');
+        label.textContent = tag;
+        const x = document.createElement('span');
+        x.className = 'chip-x';
+        x.textContent = '×';
+        x.title = 'Remove tag';
+        x.addEventListener('mousedown', async (e) => {
+          e.preventDefault(); e.stopPropagation();
+          await patchPhotoTags(photo.src, tags.filter((_, j) => j !== i));
+        });
+        chip.appendChild(label);
+        chip.appendChild(x);
+        badge.appendChild(chip);
+      });
+
+      // + button to add a new tag
+      const addBtn = document.createElement('span');
+      addBtn.className = 'add-tag-btn';
+      addBtn.textContent = '+';
+      addBtn.title = 'Add tag';
+      addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (badge.querySelector('input')) return;
+        addBtn.style.display = 'none';
+        const input = document.createElement('input');
+        input.placeholder = 'new tag';
+        input.enterKeyHint = 'done';
+        input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.68rem;width:60px;outline:none;padding:0;font-family:Inter,sans-serif;vertical-align:middle;';
+        const submitBtn = document.createElement('span');
+        submitBtn.textContent = '→';
+        submitBtn.style.cssText = 'cursor:pointer;color:var(--accent);font-size:.72rem;margin-left:.2rem;vertical-align:middle;line-height:1;';
+        badge.appendChild(input);
+        badge.appendChild(submitBtn);
+        input.focus();
+
+        function cancelAdd() { if (badge.contains(input)) badge.removeChild(input); if (badge.contains(submitBtn)) badge.removeChild(submitBtn); addBtn.style.display = ''; }
+        let saving = false;
+        async function addTag() {
+          if (saving) return; saving = true;
+          const newTag = input.value.trim();
+          cancelAdd();
+          if (newTag && !tags.includes(newTag)) await patchPhotoTags(photo.src, [...tags, newTag]);
+        }
+        submitBtn.addEventListener('mousedown', (e) => { e.preventDefault(); addTag(); });
+        submitBtn.addEventListener('touchend',  (e) => { e.preventDefault(); addTag(); });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); addTag(); }
+          if (e.key === 'Escape') cancelAdd();
+        });
+        input.addEventListener('blur', () => setTimeout(() => { if (!saving) cancelAdd(); }, 150));
+      });
+      badge.appendChild(addBtn);
+    }
+
     // ── DOM helpers ───────────────────────────────────────────
     function makeAdminItem(src, isVideo, opts = {}) {
       const { photo, tag: tagOpt, featured: featuredOpt, showFeatured } = opts;
-      const tag      = photo ? photo.tag      : tagOpt;
+      const tag      = photo ? (photo.tags || []).join(', ') : tagOpt;
       const featured = photo ? photo.featured : featuredOpt;
 
       const div = document.createElement('div');
@@ -760,98 +850,11 @@
         featBtn.textContent = '★';
         div.appendChild(featBtn);
 
-        // Tag badge — click to inline-edit; × button to clear
+        // Tag badge — multi-tag chips with + to add and × to remove
         const badge = document.createElement('span');
         badge.className = 'tag-badge';
-        badge.title = 'Click to edit tag';
-
-        const badgeText = document.createElement('span');
-        badgeText.textContent = tag || '—';
-        badge.appendChild(badgeText);
-
-        if (photo) {
-          // × clear button — appears on badge hover
-          const clearX = document.createElement('span');
-          clearX.className = 'tag-clear';
-          clearX.textContent = '×';
-          clearX.title = 'Remove tag';
-          badge.appendChild(clearX);
-
-          clearX.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            try {
-              const res  = await fetch('/photo/tag?src=' + encodeURIComponent(photo.src), {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                body: JSON.stringify({ tag: '' })
-              });
-              const data = await res.json();
-              if (data.success) {
-                config = data.config;
-                renderPhotosGrid(data.config.photos || []);
-                showToast('Tag removed');
-              } else {
-                showToast(data.error || 'Remove failed', 'err');
-              }
-            } catch { showToast('Remove failed', 'err'); }
-          });
-
-          badge.addEventListener('click', (e) => {
-            if (e.target === clearX) return; // handled above
-            e.stopPropagation();
-            if (badge.querySelector('input')) return; // already editing
-            const input = document.createElement('input');
-            input.value = photo.tag || '';
-            input.placeholder = 'clear to remove';
-            input.enterKeyHint = 'done';
-            input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.68rem;width:calc(100% - 18px);outline:none;padding:0;font-family:Inter,sans-serif;';
-            const submitBtn = document.createElement('span');
-            submitBtn.textContent = '→';
-            submitBtn.style.cssText = 'cursor:pointer;color:var(--accent);font-size:.75rem;margin-left:.25rem;vertical-align:middle;line-height:1;';
-            clearX.style.display = 'none';
-            badgeText.textContent = '';
-            badgeText.appendChild(input);
-            badgeText.appendChild(submitBtn);
-            input.focus(); input.select();
-
-            let enterPressed = false;
-
-            async function saveTag() {
-              enterPressed = true;
-              const newTag = input.value.trim();
-              if (newTag === photo.tag) { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; return; }
-              badgeText.textContent = newTag || '—'; // optimistic update
-              clearX.style.display = '';
-              try {
-                const res  = await fetch('/photo/tag?src=' + encodeURIComponent(photo.src), {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                  body: JSON.stringify({ tag: newTag })
-                });
-                const data = await res.json();
-                if (data.success) {
-                  config = data.config;
-                  renderTagSelect(data.config.tags || []);
-                  renderPhotosGrid(data.config.photos || []);
-                  showToast(newTag ? 'Tag updated' : 'Tag removed');
-                } else {
-                  badgeText.textContent = photo.tag || '—';
-                  showToast(data.error || 'Update failed', 'err');
-                }
-              } catch { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; showToast('Update failed', 'err'); }
-            }
-
-            submitBtn.addEventListener('mousedown', (e) => { e.preventDefault(); saveTag(); });
-            submitBtn.addEventListener('touchend',  (e) => { e.preventDefault(); saveTag(); });
-            input.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter') { e.preventDefault(); saveTag(); }
-              if (e.key === 'Escape') { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; }
-            });
-            input.addEventListener('blur', () => {
-              if (!enterPressed) { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; }
-            });
-          });
-        }
+        if (photo) renderTagBadge(photo, badge);
+        else { badge.textContent = tag || '—'; }
 
         div.appendChild(badge);
       }

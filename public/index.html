@@ -480,6 +480,9 @@
     }
     .tag-pill:hover { border-color: var(--accent); color: var(--accent); }
     .tag-pill.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 500; }
+    .tag-pill.tag-pill-more {
+      border-style: dashed; color: var(--muted); pointer-events: none; opacity: 0.7;
+    }
 
     /* ── Gallery header (heading + sort toggle) ─────────────── */
     .gallery-header {
@@ -968,6 +971,8 @@
     let photoSort      = 'newest';
     let allTags        = [];
     let suggestedTags  = [];
+    let overflowTags   = []; // tags not shown as pills (used by search dropdown)
+    const MAX_TAG_PILLS = 8;
     let lightboxSource = []; // whichever photo list is currently open in the lightbox
 
     // ── Load config & populate everything ─────────────────────
@@ -1172,7 +1177,11 @@
     function renderTagFilter(photosArr) {
       const wrap = document.getElementById('tag-filter');
       wrap.innerHTML = '';
-      const tags = [...new Set((photosArr || []).map(p => p.tag).filter(Boolean))];
+
+      // Collect unique tags from photos.tags arrays
+      const tagSet = new Set();
+      (photosArr || []).forEach(p => (p.tags || []).forEach(t => { if (t) tagSet.add(t); }));
+      const tags = [...tagSet];
 
       // Show search box when there's anything to search or suggest
       const searchWrap = document.getElementById('tag-search-wrap');
@@ -1181,7 +1190,11 @@
       }
 
       if (tags.length === 0) return;
-      ['All', ...tags].forEach(tag => {
+
+      const visible  = tags.slice(0, MAX_TAG_PILLS);
+      overflowTags   = tags.slice(MAX_TAG_PILLS); // stored for search dropdown
+
+      ['All', ...visible].forEach(tag => {
         const btn = document.createElement('button');
         btn.className = 'tag-pill' + (tag === activeTag ? ' active' : '');
         btn.textContent = tag;
@@ -1196,6 +1209,13 @@
         });
         wrap.appendChild(btn);
       });
+
+      if (overflowTags.length > 0) {
+        const more = document.createElement('span');
+        more.className = 'tag-pill tag-pill-more';
+        more.textContent = `+${overflowTags.length} more`;
+        wrap.appendChild(more);
+      }
     }
 
     function renderYearFilter(photosArr) {
@@ -1241,8 +1261,10 @@
 
       input.addEventListener('focus', () => {
         const q = input.value.trim().toLowerCase();
-        if (!q && suggestedTags.length) showTagSuggestions(suggestedTags, 'Suggested');
-        else if (q) {
+        if (!q) {
+          const showList = overflowTags.length ? overflowTags : suggestedTags;
+          if (showList.length) showTagSuggestions(showList, overflowTags.length ? 'More tags' : 'Suggested');
+        } else {
           const matches = allTags.filter(t => t.toLowerCase().includes(q));
           if (matches.length) showTagSuggestions(matches);
         }
@@ -1323,7 +1345,7 @@
       grid.innerHTML = '';
 
       let filtered = photosArr || [];
-      if (activeTag  !== 'All') filtered = filtered.filter(p => p.tag  === activeTag);
+      if (activeTag  !== 'All') filtered = filtered.filter(p => (p.tags || []).includes(activeTag));
       if (activeYear !== 'All') filtered = filtered.filter(p => p.year === activeYear);
       if (photoSort  === 'newest') filtered = [...filtered].reverse();
 
@@ -1390,7 +1412,8 @@
       document.getElementById('lb-img').src = photo.src;
       document.getElementById('lb-counter').textContent =
         `${currentPhotoIndex + 1} / ${lightboxSource.length}`;
-      const parts = [photo.tag, photo.year].filter(Boolean);
+      const tagStr = (photo.tags || []).filter(Boolean).join(' · ');
+      const parts = [tagStr, photo.year].filter(Boolean);
       document.getElementById('lb-detail').textContent = parts.join(' · ');
     }
 
