@@ -205,9 +205,43 @@
     .admin-pg-btn.active { background:var(--accent); border-color:var(--accent); color:#1a1410; font-weight:600; }
     .admin-pg-btn:disabled { opacity:.3; cursor:default; }
 
+    /* ── Admin tag list (manage tags) ─────────────────────────── */
+    .admin-tag-chips { display:flex; flex-wrap:wrap; gap:.4rem; margin:.5rem 0 1rem; min-height:1rem; }
+    .admin-tag-chip-del {
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:var(--surface2); border:1px solid var(--border);
+      color:var(--muted); font-size:.72rem; padding:.2rem .55rem; border-radius:4px;
+    }
+    .admin-tag-chip-del .chip-x {
+      cursor:pointer; color:var(--muted); font-size:.72rem; transition:color .15s; line-height:1;
+    }
+    .admin-tag-chip-del .chip-x:hover { color:var(--danger); }
+
+    /* ── Admin filter autocomplete ─────────────────────────────── */
+    .admin-search-wrap { position:relative; margin-bottom:.75rem; }
+    .admin-search-wrap .admin-filter-input { margin-bottom:0; width:100%; }
+    .admin-search-ac {
+      position:absolute; top:100%; left:0; right:0; z-index:20;
+      background:var(--surface2); border:1px solid var(--border);
+      border-top:none; border-radius:0 0 6px 6px; display:none;
+      max-height:180px; overflow-y:auto;
+    }
+    .admin-search-ac .ac-item {
+      padding:.45rem .75rem; font-size:.78rem; cursor:pointer;
+      color:var(--text); transition:background .1s;
+    }
+    .admin-search-ac .ac-item:hover { background:var(--dim); color:var(--accent); }
+
     /* ── Tag badge inline edit ─────────────────────────────────── */
     .admin-item .tag-badge { cursor:pointer; }
     .admin-item .tag-badge:hover { background:rgba(200,169,126,.25); }
+    .admin-item .tag-badge .tag-clear {
+      display:inline-block; margin-left:.3rem; opacity:0;
+      transition:opacity .15s, color .15s; cursor:pointer; color:var(--muted);
+      font-size:.75rem; vertical-align:middle; line-height:1;
+    }
+    .admin-item .tag-badge:hover .tag-clear { opacity:1; }
+    .admin-item .tag-badge .tag-clear:hover { color:var(--danger); }
   </style>
 </head>
 <body>
@@ -326,6 +360,7 @@
         <input type="text" id="photos-tag-new" placeholder="New tag name" style="min-width:120px" />
         <input type="number" id="photos-year" placeholder="Year" min="2000" max="2099" style="width:82px;flex:none" />
       </div>
+      <div class="admin-tag-chips" id="admin-tag-chips"></div>
       <div class="drop-zone" id="photos-drop">
         <input type="file" id="photos-file" accept="image/*" multiple />
         Drop photos here or <u>click to browse</u><br />
@@ -334,7 +369,10 @@
       <div class="progress-wrap" id="photos-prog-wrap"><div class="progress-fill" id="photos-prog-fill"></div></div>
 
       <!-- Filter + Grid -->
-      <input type="text" class="admin-filter-input" id="admin-photos-search" placeholder="Filter by tag…" />
+      <div class="admin-search-wrap">
+        <input type="text" class="admin-filter-input" id="admin-photos-search" placeholder="Filter by tag…" autocomplete="off" />
+        <div class="admin-search-ac" id="admin-search-ac"></div>
+      </div>
       <div class="admin-grid" id="photos-grid"></div>
       <div id="photos-pagination"></div>
     </div>
@@ -431,6 +469,46 @@
         tags.map(t => `<option value="${t}">${t}</option>`).join('') +
         '<option value="__new__">+ New tag…</option>';
       if (tags.includes(prev)) select.value = prev;
+      renderTagList(tags);
+    }
+
+    function renderTagList(tags) {
+      const wrap = document.getElementById('admin-tag-chips');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'admin-tag-chip-del';
+        const label = document.createElement('span');
+        label.textContent = tag;
+        const x = document.createElement('span');
+        x.className = 'chip-x';
+        x.textContent = '×';
+        x.title = 'Remove tag from list';
+        x.addEventListener('click', () => deleteTag(tag));
+        chip.appendChild(label);
+        chip.appendChild(x);
+        wrap.appendChild(chip);
+      });
+    }
+
+    async function deleteTag(tag) {
+      const newTags = (config.tags || []).filter(t => t !== tag);
+      try {
+        const res  = await fetch('/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ tags: newTags })
+        });
+        const data = await res.json();
+        if (data.success) {
+          config = data.config;
+          renderTagSelect(newTags);
+          showToast('Tag removed from list');
+        } else {
+          showToast(data.error || 'Could not remove tag', 'err');
+        }
+      } catch { showToast('Could not remove tag', 'err'); }
     }
 
     const tagSelect = document.getElementById('photos-tag-select');
@@ -472,7 +550,7 @@
     }
 
     // ── Generic upload — one file per request ─────────────────
-    async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess, extraFields = {}) {
+    async function uploadFiles(endpoint, fieldName, files, progKey, onSuccess, extraFields = {}, onEach = null) {
       if (!files || !files.length) return;
       let uploaded = 0;
       let lastData = null;
@@ -484,7 +562,7 @@
         try {
           const res  = await fetch(endpoint, { method: 'POST', headers: authHeaders(), body: form });
           const data = await res.json();
-          if (data.success) { config = data.config; lastData = data; uploaded++; }
+          if (data.success) { config = data.config; lastData = data; uploaded++; if (onEach) onEach(data); }
           else { showToast(data.error || 'Upload failed', 'err'); break; }
         } catch { showToast('Upload error', 'err'); break; }
       }
@@ -555,9 +633,10 @@
       const grid = document.getElementById('photos-grid');
       grid.innerHTML = '';
 
+      const reversed = [...photos].reverse();
       const filtered = adminPhotoFilter
-        ? photos.filter(p => (p.tag || '').toLowerCase().includes(adminPhotoFilter))
-        : photos;
+        ? reversed.filter(p => (p.tag || '').toLowerCase().includes(adminPhotoFilter))
+        : reversed;
 
       if (!filtered.length) {
         grid.innerHTML = adminPhotoFilter
@@ -632,12 +711,11 @@
       const tag  = getSelectedTag();
       const year = document.getElementById('photos-year').value.trim()
                    || String(new Date().getFullYear());
-      if (!tag) { showToast('Pick or enter a tag first', 'err'); return; }
-      return uploadFiles('/upload', 'photos', files, 'photos-prog',
-        data => {
-          renderTagSelect(data.config.tags || []);
-          renderPhotosGrid(data.config.photos || []);
-        }, { tag, year });
+      const onPhotos = data => {
+        renderTagSelect(data.config.tags || []);
+        renderPhotosGrid(data.config.photos || []);
+      };
+      return uploadFiles('/upload', 'photos', files, 'photos-prog', onPhotos, { tag, year }, onPhotos);
     });
 
     // ── Media (videos) ────────────────────────────────────────
@@ -682,21 +760,53 @@
         featBtn.textContent = '★';
         div.appendChild(featBtn);
 
-        // Tag badge — click to inline-edit
+        // Tag badge — click to inline-edit; × button to clear
         const badge = document.createElement('span');
         badge.className = 'tag-badge';
-        badge.textContent = tag || '—';
         badge.title = 'Click to edit tag';
 
+        const badgeText = document.createElement('span');
+        badgeText.textContent = tag || '—';
+        badge.appendChild(badgeText);
+
         if (photo) {
+          // × clear button — appears on badge hover
+          const clearX = document.createElement('span');
+          clearX.className = 'tag-clear';
+          clearX.textContent = '×';
+          clearX.title = 'Remove tag';
+          badge.appendChild(clearX);
+
+          clearX.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+              const res  = await fetch('/photo/tag?src=' + encodeURIComponent(photo.src), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                body: JSON.stringify({ tag: '' })
+              });
+              const data = await res.json();
+              if (data.success) {
+                config = data.config;
+                renderPhotosGrid(data.config.photos || []);
+                showToast('Tag removed');
+              } else {
+                showToast(data.error || 'Remove failed', 'err');
+              }
+            } catch { showToast('Remove failed', 'err'); }
+          });
+
           badge.addEventListener('click', (e) => {
+            if (e.target === clearX) return; // handled above
             e.stopPropagation();
             if (badge.querySelector('input')) return; // already editing
             const input = document.createElement('input');
             input.value = photo.tag || '';
+            input.placeholder = 'clear to remove';
             input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-size:.68rem;width:100%;outline:none;padding:0;font-family:Inter,sans-serif;';
-            badge.textContent = '';
-            badge.appendChild(input);
+            clearX.style.display = 'none';
+            badgeText.textContent = '';
+            badgeText.appendChild(input);
             input.focus(); input.select();
 
             let enterPressed = false;
@@ -704,8 +814,9 @@
             async function saveTag() {
               enterPressed = true;
               const newTag = input.value.trim();
-              if (!newTag || newTag === photo.tag) { badge.textContent = photo.tag || '—'; return; }
-              badge.textContent = newTag; // optimistic update
+              if (newTag === photo.tag) { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; return; }
+              badgeText.textContent = newTag || '—'; // optimistic update
+              clearX.style.display = '';
               try {
                 const res  = await fetch('/photo/tag?src=' + encodeURIComponent(photo.src), {
                   method: 'PATCH',
@@ -717,20 +828,20 @@
                   config = data.config;
                   renderTagSelect(data.config.tags || []);
                   renderPhotosGrid(data.config.photos || []);
-                  showToast('Tag updated');
+                  showToast(newTag ? 'Tag updated' : 'Tag removed');
                 } else {
-                  badge.textContent = photo.tag || '—';
+                  badgeText.textContent = photo.tag || '—';
                   showToast(data.error || 'Update failed', 'err');
                 }
-              } catch { badge.textContent = photo.tag || '—'; showToast('Update failed', 'err'); }
+              } catch { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; showToast('Update failed', 'err'); }
             }
 
             input.addEventListener('keydown', (e) => {
               if (e.key === 'Enter') { e.preventDefault(); saveTag(); }
-              if (e.key === 'Escape') { badge.textContent = photo.tag || '—'; }
+              if (e.key === 'Escape') { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; }
             });
             input.addEventListener('blur', () => {
-              if (!enterPressed) badge.textContent = photo.tag || '—';
+              if (!enterPressed) { badgeText.textContent = photo.tag || '—'; clearX.style.display = ''; }
             });
           });
         }
@@ -809,11 +920,48 @@
       if (e.key === 'Enter') addSuggestedTag();
     });
 
-    // ── Admin photo filter ────────────────────────────────────
-    document.getElementById('admin-photos-search').addEventListener('input', (e) => {
-      adminPhotoFilter = e.target.value.trim().toLowerCase();
+    // ── Admin photo filter with autocomplete ─────────────────
+    const adminSearchInput = document.getElementById('admin-photos-search');
+    const adminSearchAc    = document.getElementById('admin-search-ac');
+
+    function showAdminAc(tags) {
+      if (!tags.length) { adminSearchAc.style.display = 'none'; return; }
+      adminSearchAc.innerHTML = '';
+      tags.forEach(tag => {
+        const item = document.createElement('div');
+        item.className = 'ac-item';
+        item.textContent = tag;
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          adminSearchInput.value = tag;
+          adminPhotoFilter = tag.toLowerCase();
+          adminPhotoPage   = 0;
+          renderPhotosGrid(config.photos || []);
+          adminSearchAc.style.display = 'none';
+        });
+        adminSearchAc.appendChild(item);
+      });
+      adminSearchAc.style.display = 'block';
+    }
+
+    adminSearchInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim().toLowerCase();
+      adminPhotoFilter = val;
       adminPhotoPage   = 0;
       renderPhotosGrid(config.photos || []);
+      if (val) {
+        showAdminAc((config.tags || []).filter(t => t.toLowerCase().includes(val)));
+      } else {
+        adminSearchAc.style.display = 'none';
+      }
+    });
+
+    adminSearchInput.addEventListener('blur', () => {
+      setTimeout(() => { adminSearchAc.style.display = 'none'; }, 120);
+    });
+
+    adminSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { adminSearchAc.style.display = 'none'; adminSearchInput.blur(); }
     });
 
     // ── Progress helpers ──────────────────────────────────────

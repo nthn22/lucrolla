@@ -175,11 +175,12 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
     let tag = '';
     let year = '';
     if (!isHero && !isAbout) {
-      tag = (req.body.tag || '').trim();
-      if (!tag) return res.status(400).json({ error: 'Tag is required for gallery uploads' });
+      tag  = (req.body.tag  || '').trim();
       year = (req.body.year || String(new Date().getFullYear())).trim();
-      if (!config.tags) config.tags = [];
-      if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
+      if (tag) {
+        if (!config.tags) config.tags = [];
+        if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
+      }
     }
 
     for (const file of req.files) {
@@ -268,20 +269,21 @@ app.patch('/photo/year', requireAuth, (req, res) => {
   }
 });
 
-// PATCH /photo/tag?src=<url> — update the tag on an existing gallery photo
+// PATCH /photo/tag?src=<url> — update or clear the tag on an existing gallery photo
 app.patch('/photo/tag', requireAuth, (req, res) => {
   try {
     const src  = req.query.src;
-    const tag  = (req.body.tag || '').trim();
-    if (!tag) return res.status(400).json({ error: 'Tag is required' });
+    const tag  = (req.body.tag ?? '').trim(); // empty string clears the tag
 
     const config = readConfig();
     const item   = config.photos.find(p => p.src === src);
     if (!item) return res.status(404).json({ error: 'Photo not found' });
 
     item.tag = tag;
-    if (!config.tags) config.tags = [];
-    if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
+    if (tag) {
+      if (!config.tags) config.tags = [];
+      if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
+    }
 
     writeConfig(config);
     res.json({ success: true, config: publicConfig(config) });
