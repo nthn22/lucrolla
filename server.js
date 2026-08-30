@@ -123,6 +123,20 @@ async function restoreConfigFromCloudinary() {
   }
 }
 
+// Migrate legacy photo.tag (string) → photo.tags (array) — runs once after config restore
+function migrateConfig() {
+  const config = readConfig();
+  let changed = false;
+  (config.photos || []).forEach(p => {
+    if (!Array.isArray(p.tags)) {
+      p.tags = p.tag ? [p.tag] : [];
+      delete p.tag;
+      changed = true;
+    }
+  });
+  if (changed) writeConfig(config);
+}
+
 // ── Routes ───────────────────────────────────────────────────
 
 // POST /auth — verify password, return session token
@@ -194,7 +208,7 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
         config.aboutImage = item;
         break; // only one about image
       } else {
-        config.photos.push({ ...item, alt: '', tag, year, featured: false });
+        config.photos.push({ ...item, alt: '', tags: tag ? [tag] : [], year, featured: false });
       }
     }
 
@@ -269,21 +283,23 @@ app.patch('/photo/year', requireAuth, (req, res) => {
   }
 });
 
-// PATCH /photo/tag?src=<url> — update or clear the tag on an existing gallery photo
+// PATCH /photo/tag?src=<url> — replace tags array on an existing gallery photo
 app.patch('/photo/tag', requireAuth, (req, res) => {
   try {
     const src  = req.query.src;
-    const tag  = (req.body.tag ?? '').trim(); // empty string clears the tag
+    const tags = Array.isArray(req.body.tags)
+      ? req.body.tags.map(t => String(t).trim()).filter(Boolean)
+      : [];
 
     const config = readConfig();
     const item   = config.photos.find(p => p.src === src);
     if (!item) return res.status(404).json({ error: 'Photo not found' });
 
-    item.tag = tag;
-    if (tag) {
-      if (!config.tags) config.tags = [];
+    item.tags = tags;
+    if (!config.tags) config.tags = [];
+    tags.forEach(tag => {
       if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
-    }
+    });
 
     writeConfig(config);
     res.json({ success: true, config: publicConfig(config) });
@@ -357,6 +373,7 @@ app.use((err, req, res, next) => {
 // ── Start server ─────────────────────────────────────────────
 // Restore config from Cloudinary before accepting requests
 restoreConfigFromCloudinary().then(() => {
+  migrateConfig();
   app.listen(PORT, () => {
     console.log(`\n📷  Portfolio running at http://localhost:${PORT}`);
     console.log(`🔒  Admin panel at  http://localhost:${PORT}/admin.html\n`);
