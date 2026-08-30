@@ -173,9 +173,11 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
     const isAbout = req.query.about === 'true';
 
     let tag = '';
+    let year = '';
     if (!isHero && !isAbout) {
       tag = (req.body.tag || '').trim();
       if (!tag) return res.status(400).json({ error: 'Tag is required for gallery uploads' });
+      year = (req.body.year || String(new Date().getFullYear())).trim();
       if (!config.tags) config.tags = [];
       if (!config.tags.some(t => t.toLowerCase() === tag.toLowerCase())) config.tags.push(tag);
     }
@@ -191,7 +193,7 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
         config.aboutImage = item;
         break; // only one about image
       } else {
-        config.photos.push({ ...item, alt: '', tag, featured: false });
+        config.photos.push({ ...item, alt: '', tag, year, featured: false });
       }
     }
 
@@ -244,6 +246,25 @@ app.delete('/photo', requireAuth, async (req, res) => {
     res.json({ success: true, config: publicConfig(config) });
   } catch (err) {
     res.status(500).json({ error: 'Delete failed: ' + err.message });
+  }
+});
+
+// PATCH /photo/year?src=<url> — update the year on an existing gallery photo
+app.patch('/photo/year', requireAuth, (req, res) => {
+  try {
+    const src  = req.query.src;
+    const year = (req.body.year || '').trim();
+    if (!year) return res.status(400).json({ error: 'Year is required' });
+
+    const config = readConfig();
+    const item   = config.photos.find(p => p.src === src);
+    if (!item) return res.status(404).json({ error: 'Photo not found' });
+
+    item.year = year;
+    writeConfig(config);
+    res.json({ success: true, config: publicConfig(config) });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed: ' + err.message });
   }
 });
 

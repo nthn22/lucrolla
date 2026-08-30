@@ -481,6 +481,39 @@
     .tag-pill:hover { border-color: var(--accent); color: var(--accent); }
     .tag-pill.active { background: var(--accent); border-color: var(--accent); color: #1a1a1a; font-weight: 500; }
 
+    /* ── Gallery header (heading + sort toggle) ─────────────── */
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .gallery-header .section-heading { margin-bottom: 0; }
+
+    .sort-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .sort-btn {
+      background: transparent;
+      border: none;
+      color: var(--warm-gray);
+      padding: 0.45rem 0.9rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    .sort-btn:first-child { border-right: 1px solid var(--border); }
+    .sort-btn.active { background: rgba(255,255,255,0.08); color: var(--warm-black); }
+    .sort-btn:hover:not(.active) { color: var(--accent); }
+
     /* ── Tag search bar ─────────────────────────────────────── */
     .tag-search-wrap {
       position: relative;
@@ -826,8 +859,14 @@
   <section id="gallery">
     <div class="section-inner">
       <p class="section-label fade-up">Selected Work <span class="label-update">&middot; Updated Monthly</span></p>
-      <h2 class="section-heading fade-up">Gallery</h2>
-      <div class="tag-search-wrap fade-up" id="tag-search-wrap" style="display:none">
+      <div class="gallery-header fade-up">
+        <h2 class="section-heading">Gallery</h2>
+        <div class="sort-toggle" id="sort-toggle">
+          <button class="sort-btn active" data-sort="newest">Newest</button>
+          <button class="sort-btn" data-sort="oldest">Oldest</button>
+        </div>
+      </div>
+      <div class="tag-search-wrap" id="tag-search-wrap" style="display:none">
         <svg class="tag-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/>
           <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -836,6 +875,7 @@
         <div class="tag-autocomplete" id="tag-autocomplete"></div>
       </div>
       <div class="tag-filter" id="tag-filter"></div>
+      <div class="tag-filter" id="year-filter" style="display:none"></div>
       <div class="photo-grid" id="photo-grid"></div>
       <div id="photo-pagination"></div>
     </div>
@@ -912,6 +952,8 @@
     let currentSlide  = 0;
     let heroSlides    = [];
     let activeTag      = 'All';
+    let activeYear     = 'All';
+    let photoSort      = 'newest';
     let allTags        = [];
     let suggestedTags  = [];
     let lightboxSource = []; // whichever photo list is currently open in the lightbox
@@ -967,6 +1009,7 @@
         allTags       = data.tags          || [];
         suggestedTags = data.suggestedTags || [];
         renderTagFilter(photos);
+        renderYearFilter(photos);
         setupTagSearch();
         renderGallery(photos);
 
@@ -1143,6 +1186,42 @@
       });
     }
 
+    function renderYearFilter(photosArr) {
+      const wrap  = document.getElementById('year-filter');
+      wrap.innerHTML = '';
+      const years = [...new Set((photosArr || []).filter(p => p.year).map(p => p.year))]
+        .sort((a, b) => Number(b) - Number(a)); // most recent first
+
+      if (years.length < 2) { wrap.style.display = 'none'; return; } // only show if >1 year
+      wrap.style.display = '';
+
+      ['All', ...years].forEach(year => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-pill' + (year === activeYear ? ' active' : '');
+        btn.textContent = year === 'All' ? 'All years' : year;
+        btn.addEventListener('click', () => {
+          if (year === activeYear) return;
+          activeYear = year;
+          photoPage = 0;
+          renderYearFilter(photos);
+          renderGallery(photos);
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    // Sort toggle
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sort = btn.dataset.sort;
+        if (sort === photoSort) return;
+        photoSort = sort;
+        photoPage = 0;
+        document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sort));
+        renderGallery(photos);
+      });
+    });
+
     function setupTagSearch() {
       const input    = document.getElementById('tag-search');
       const dropdown = document.getElementById('tag-autocomplete');
@@ -1231,9 +1310,10 @@
       const grid = document.getElementById('photo-grid');
       grid.innerHTML = '';
 
-      const filtered = activeTag === 'All'
-        ? (photosArr || [])
-        : (photosArr || []).filter(p => p.tag === activeTag);
+      let filtered = photosArr || [];
+      if (activeTag  !== 'All') filtered = filtered.filter(p => p.tag  === activeTag);
+      if (activeYear !== 'All') filtered = filtered.filter(p => p.year === activeYear);
+      if (photoSort  === 'newest') filtered = [...filtered].reverse();
 
       if (!filtered.length) {
         grid.innerHTML = '<p class="empty-state">No photos yet.</p>';
