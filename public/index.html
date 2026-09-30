@@ -182,10 +182,11 @@
     #nav-overlay.open .nav-menu-link:nth-child(2) { transition-delay: 0.14s; }
     #nav-overlay.open .nav-menu-link:nth-child(3) { transition-delay: 0.20s; }
     #nav-overlay.open .nav-menu-link:nth-child(4) { transition-delay: 0.26s; }
+    #nav-overlay.open .nav-menu-link:nth-child(5) { transition-delay: 0.32s; }
 
     .nav-menu-link:hover { color: var(--accent); }
 
-    #nav-overlay.open .nav-menu-link:nth-child(5) { transition-delay: 0.32s; }
+    #nav-overlay.open .nav-menu-link:nth-child(6) { transition-delay: 0.38s; }
 
     /* Small Instagram link at the bottom of overlay */
     .nav-overlay-ig {
@@ -624,8 +625,45 @@
       font-size: 0.9rem;
     }
 
+    /* ── Portraits ──────────────────────────────────────────── */
+    .portrait-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .portrait-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    }
+
+    .portrait-item {
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      aspect-ratio: 2/3;
+      cursor: pointer;
+      background: #e0d8cc;
+    }
+
+    .portrait-item img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.55s var(--ease);
+      -webkit-user-drag: none;
+      user-select: none;
+    }
+    .portrait-item:hover img { transform: scale(1.04); }
+
+    .portrait-item::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+    }
+
     /* ── Pagination ─────────────────────────────────────────── */
-    #photo-pagination, #media-pagination {
+    #photo-pagination, #portrait-pagination, #media-pagination {
       display: flex;
       justify-content: center;
       margin-top: 2.5rem;
@@ -832,12 +870,13 @@
 
   <!-- ── Full-screen Nav Overlay ───────────────────────────── -->
   <div id="nav-overlay" role="dialog" aria-modal="true" aria-label="Navigation menu">
-    <a href="#home"    class="nav-menu-link" data-nav>Home</a>
-    <a href="#gallery" class="nav-menu-link" data-nav>Gallery</a>
-    <a href="#media"   class="nav-menu-link" data-nav>Media</a>
-    <a href="#about"   class="nav-menu-link" data-nav>About</a>
-    <a href="#prints"  class="nav-menu-link" data-nav>Prints</a>
-    <a href="#contact" class="nav-overlay-ig" id="nav-overlay-ig" data-nav>@lucrolla</a>
+    <a href="#home"      class="nav-menu-link" data-nav>Home</a>
+    <a href="#gallery"   class="nav-menu-link" data-nav>Gallery</a>
+    <a href="#portraits" class="nav-menu-link" data-nav>Portraits</a>
+    <a href="#media"     class="nav-menu-link" data-nav>Media</a>
+    <a href="#about"     class="nav-menu-link" data-nav>About</a>
+    <a href="#prints"    class="nav-menu-link" data-nav>Prints</a>
+    <a href="#contact"   class="nav-overlay-ig" id="nav-overlay-ig" data-nav>@lucrolla</a>
   </div>
 
   <!-- ── Fixed Navbar ─────────────────────────────────────── -->
@@ -897,6 +936,16 @@
       <div class="tag-filter" id="year-filter" style="display:none"></div>
       <div class="photo-grid" id="photo-grid"></div>
       <div id="photo-pagination"></div>
+    </div>
+  </section>
+
+  <!-- ── Portraits ────────────────────────────────────────── -->
+  <section id="portraits" style="display:none">
+    <div class="section-inner">
+      <p class="section-label fade-up">Selected Work</p>
+      <h2 class="section-heading fade-up">Portraits</h2>
+      <div class="portrait-grid" id="portrait-grid"></div>
+      <div id="portrait-pagination"></div>
     </div>
   </section>
 
@@ -964,10 +1013,12 @@
   <script>
     // ── State ──────────────────────────────────────────────────
     let photos = [];
+    let portraits = [];
     let currentPhotoIndex = 0;
     let slideInterval = null;
     const PAGE_SIZE  = 21;
     let photoPage = 0;
+    let portraitPage = 0;
     let mediaPage = 0;
     let currentSlide  = 0;
     let heroSlides    = [];
@@ -1032,6 +1083,13 @@
         renderYearFilter(photos);
         setupTagSearch();
         renderGallery(photos);
+
+        // Portraits
+        portraits = data.portraits || [];
+        if (portraits.length > 0) {
+          renderPortraits(portraits);
+          document.getElementById('portraits').style.display = '';
+        }
 
         // Start scroll-reveal observer after DOM is ready
         initScrollReveal();
@@ -1410,6 +1468,38 @@
         item.innerHTML = `<img src="${photo.src}" alt="${photo.alt || ''}" loading="lazy" draggable="false" />`;
         item.addEventListener('click', () => openPhotoLightbox(featured, i));
         grid.appendChild(item);
+      });
+
+      initScrollReveal();
+    }
+
+    // ── Portraits ─────────────────────────────────────────────
+    function renderPortraits(portraitsArr) {
+      const grid = document.getElementById('portrait-grid');
+      grid.innerHTML = '';
+
+      if (!(portraitsArr || []).length) {
+        document.getElementById('portrait-pagination').innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.ceil(portraitsArr.length / PAGE_SIZE);
+      const start      = portraitPage * PAGE_SIZE;
+      const pageItems  = portraitsArr.slice(start, start + PAGE_SIZE);
+
+      pageItems.forEach((portrait, i) => {
+        const globalIndex = start + i;
+        const item = document.createElement('div');
+        item.className = 'portrait-item fade-up';
+        item.innerHTML = `<img src="${portrait.src}" alt="${portrait.alt || ''}" loading="lazy" draggable="false" />`;
+        item.addEventListener('click', () => openPhotoLightbox(portraitsArr, globalIndex));
+        grid.appendChild(item);
+      });
+
+      renderPagination('portrait-pagination', portraitPage, totalPages, (page) => {
+        portraitPage = page;
+        renderPortraits(portraitsArr);
+        document.getElementById('portraits').scrollIntoView({ behavior: 'smooth' });
       });
 
       initScrollReveal();

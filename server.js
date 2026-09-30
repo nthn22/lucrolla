@@ -114,7 +114,7 @@ async function restoreConfigFromCloudinary() {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify({
           name: 'Lucrolla', tagline: '', instagram: '',
           heroImages: [], heroImage: '', aboutImage: '', about: '',
-          photos: [], media: [], tags: [], suggestedTags: []
+          photos: [], portraits: [], media: [], tags: [], suggestedTags: []
         }, null, 2));
       }
     } else {
@@ -155,6 +155,7 @@ app.get('/config', (req, res) => {
     if (!data.heroImages || !data.heroImages.length) data.heroImages = data.heroImage ? [data.heroImage] : [];
     if (data.about         === undefined) data.about         = '';
     if (!data.media)                      data.media         = [];
+    if (!data.portraits)                  data.portraits     = [];
     if (!data.tags)                       data.tags          = [];
     if (!data.suggestedTags)              data.suggestedTags = [];
     res.json(publicConfig(data));
@@ -182,13 +183,14 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
   try {
     if (!req.files || !req.files.length) return res.status(400).json({ error: 'No files uploaded' });
 
-    const config  = readConfig();
-    const isHero  = req.query.hero  === 'true';
-    const isAbout = req.query.about === 'true';
+    const config      = readConfig();
+    const isHero      = req.query.hero      === 'true';
+    const isAbout     = req.query.about     === 'true';
+    const isPortraits = req.query.portraits === 'true';
 
     let tag = '';
     let year = '';
-    if (!isHero && !isAbout) {
+    if (!isHero && !isAbout && !isPortraits) {
       tag  = (req.body.tag  || '').trim();
       year = (req.body.year || String(new Date().getFullYear())).trim();
       if (tag) {
@@ -198,6 +200,13 @@ app.post('/upload', requireAuth, imageUpload.any(), async (req, res) => {
     }
 
     for (const file of req.files) {
+      if (isPortraits) {
+        if (!config.portraits) config.portraits = [];
+        const item = await uploadBuffer(file.buffer, { folder: 'portfolio/portraits' });
+        config.portraits.push({ ...item, alt: '' });
+        continue;
+      }
+
       const item = await uploadBuffer(file.buffer, { folder: 'portfolio/photos' });
 
       if (isHero) {
@@ -338,6 +347,24 @@ app.delete('/hero', requireAuth, async (req, res) => {
 
     const first = config.heroImages[0];
     config.heroImage = first ? (typeof first === 'string' ? first : first.src) : '';
+
+    writeConfig(config);
+    res.json({ success: true, config: publicConfig(config) });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete failed: ' + err.message });
+  }
+});
+
+// DELETE /portrait?src=<url> — delete a portrait photo
+app.delete('/portrait', requireAuth, async (req, res) => {
+  try {
+    const src    = req.query.src;
+    const config = readConfig();
+    if (!config.portraits) config.portraits = [];
+
+    const item = config.portraits.find(p => p.src === src);
+    if (item?.cloudId) await cloudinary.uploader.destroy(item.cloudId);
+    config.portraits = config.portraits.filter(p => p.src !== src);
 
     writeConfig(config);
     res.json({ success: true, config: publicConfig(config) });

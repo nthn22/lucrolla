@@ -112,6 +112,7 @@
     .admin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:1.25rem; }
     .admin-item { position:relative; aspect-ratio:4/5; border-radius:5px; overflow:hidden; background:var(--surface2); min-height:150px; }
     .admin-item.video-item { aspect-ratio:16/9; }
+    .admin-item.portrait-item { aspect-ratio:2/3; }
     .admin-item img, .admin-item video { width:100%; height:100%; object-fit:cover; display:block; }
     .admin-item .del-btn {
       position:absolute; top:5px; right:5px; width:24px; height:24px;
@@ -192,7 +193,7 @@
     .admin-filter-input:focus { border-color:var(--accent); }
 
     /* ── Admin gallery pagination ──────────────────────────────── */
-    #photos-pagination { display:flex; justify-content:center; margin-top:1rem; }
+    #photos-pagination, #portraits-pagination { display:flex; justify-content:center; margin-top:1rem; }
     .admin-pagination { display:flex; gap:.35rem; flex-wrap:wrap; justify-content:center; }
     .admin-pg-btn {
       background:var(--surface2); border:1px solid var(--border); color:var(--muted);
@@ -386,7 +387,23 @@
       <div id="photos-pagination"></div>
     </div>
 
-    <!-- 5. Media (Videos) -->
+    <!-- 5. Portraits -->
+    <div class="card">
+      <p class="card-title">Portraits</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:.75rem">
+        Displayed in a dedicated Portraits section on the site — separate from the main gallery.
+      </p>
+      <div class="drop-zone" id="portraits-drop">
+        <input type="file" id="portraits-file" accept="image/*" multiple />
+        Drop portraits here or <u>click to browse</u><br />
+        <span style="font-size:.75rem;opacity:.6">jpg, png, gif, webp — multiple files supported</span>
+      </div>
+      <div class="progress-wrap" id="portraits-prog-wrap"><div class="progress-fill" id="portraits-prog-fill"></div></div>
+      <div class="admin-grid" id="portraits-grid"></div>
+      <div id="portraits-pagination"></div>
+    </div>
+
+    <!-- 6. Media (Videos) -->
     <div class="card">
       <p class="card-title">Media — Videos</p>
       <div class="drop-zone" id="media-drop">
@@ -466,6 +483,7 @@
         renderTagSelect(config.tags        || []);
         renderSuggestedTags(config.suggestedTags || []);
         renderPhotosGrid(config.photos     || []);
+        renderPortraitsGrid(config.portraits || []);
         renderMediaGrid(config.media       || []);
       } catch { showToast('Could not load data', 'err'); }
     }
@@ -726,6 +744,93 @@
       };
       return uploadFiles('/upload', 'photos', files, 'photos-prog', onPhotos, { tag, year }, onPhotos);
     });
+
+    // ── Portraits ─────────────────────────────────────────────
+    let adminPortraitPage = 0;
+    const ADMIN_PORTRAIT_PAGE_SIZE = 21;
+
+    function renderPortraitsGrid(portraitsArr) {
+      const grid = document.getElementById('portraits-grid');
+      grid.innerHTML = '';
+
+      if (!(portraitsArr || []).length) {
+        grid.innerHTML = '<p class="no-items">No portraits yet.</p>';
+        document.getElementById('portraits-pagination').innerHTML = '';
+        return;
+      }
+
+      const reversed   = [...portraitsArr].reverse();
+      const totalPages = Math.ceil(reversed.length / ADMIN_PORTRAIT_PAGE_SIZE);
+      if (adminPortraitPage >= totalPages) adminPortraitPage = Math.max(0, totalPages - 1);
+      const start     = adminPortraitPage * ADMIN_PORTRAIT_PAGE_SIZE;
+      const pageItems = reversed.slice(start, start + ADMIN_PORTRAIT_PAGE_SIZE);
+
+      pageItems.forEach(portrait => {
+        const item = makePortraitAdminItem(portrait.src + '?t=' + Date.now());
+        item.querySelector('.del-btn').addEventListener('click', async () => {
+          await deleteItem('portrait', portrait.src);
+          adminPortraitPage = 0;
+          renderPortraitsGrid(config.portraits || []);
+          showToast('Portrait deleted');
+        });
+        grid.appendChild(item);
+      });
+
+      renderAdminPortraitPagination(adminPortraitPage, totalPages, (page) => {
+        adminPortraitPage = page;
+        renderPortraitsGrid(config.portraits || []);
+        document.getElementById('portraits-grid').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+
+    function makePortraitAdminItem(src) {
+      const div = document.createElement('div');
+      div.className = 'admin-item portrait-item';
+      const img = document.createElement('img');
+      img.src = src; img.alt = ''; img.loading = 'lazy';
+      div.appendChild(img);
+      const btn = document.createElement('button');
+      btn.className = 'del-btn'; btn.title = 'Delete'; btn.textContent = '×';
+      div.appendChild(btn);
+      return div;
+    }
+
+    function renderAdminPortraitPagination(currentPage, totalPages, onPageChange) {
+      const container = document.getElementById('portraits-pagination');
+      container.innerHTML = '';
+      if (totalPages <= 1) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'admin-pagination';
+
+      const prev = document.createElement('button');
+      prev.className = 'admin-pg-btn'; prev.textContent = '←';
+      prev.disabled = currentPage === 0;
+      prev.addEventListener('click', () => onPageChange(currentPage - 1));
+      wrap.appendChild(prev);
+
+      for (let i = 0; i < totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'admin-pg-btn' + (i === currentPage ? ' active' : '');
+        btn.textContent = i + 1;
+        btn.addEventListener('click', () => onPageChange(i));
+        wrap.appendChild(btn);
+      }
+
+      const next = document.createElement('button');
+      next.className = 'admin-pg-btn'; next.textContent = '→';
+      next.disabled = currentPage === totalPages - 1;
+      next.addEventListener('click', () => onPageChange(currentPage + 1));
+      wrap.appendChild(next);
+
+      container.appendChild(wrap);
+    }
+
+    wireUpload('portraits-drop', 'portraits-file', true, files =>
+      uploadFiles('/upload?portraits=true', 'photos', files, 'portraits-prog',
+        data => renderPortraitsGrid(data.config.portraits || []),
+        {},
+        data => renderPortraitsGrid(data.config.portraits || []))
+    );
 
     // ── Media (videos) ────────────────────────────────────────
     function renderMediaGrid(media) {
